@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
 import { 
   BrainCircuit, 
   MessageSquare, 
@@ -10,159 +9,402 @@ import {
   Map, 
   Ship, 
   LineChart, 
-  Info
+  Info,
+  Cpu,
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import DataStream, { type LogEntry } from '@/components/hud/DataStream';
 
-const agents = [
-  { id: 'planner', label: 'Planner / Orchestrator', icon: BrainCircuit, row: 1, col: 2 },
-  { id: 'language', label: 'Language & Intent', icon: MessageSquare, row: 2, col: 2 },
-  { id: 'marine_data', label: 'Marine Data Discovery', icon: Database, row: 3, col: 2 },
-  { id: 'weather', label: 'Weather Intelligence', icon: CloudRain, row: 4, col: 1 },
-  { id: 'ocean', label: 'Ocean Analytics', icon: Waves, row: 4, col: 3 },
-  { id: 'risk', label: 'Risk Assessment', icon: ShieldAlert, row: 5, col: 1 },
-  { id: 'geo', label: 'Geospatial Reasoning', icon: Map, row: 5, col: 3 },
-  { id: 'fleet', label: 'Fleet Optimization', icon: Ship, row: 6, col: 2 },
-  { id: 'viz', label: 'Visualization', icon: LineChart, row: 7, col: 2 },
-  { id: 'explain', label: 'Explainability', icon: Info, row: 8, col: 2 },
+interface AgentInfo {
+  id: string;
+  label: string;
+  role: string;
+  icon: React.ElementType;
+  status: 'IDLE' | 'PROCESSING' | 'COMPLETE' | 'QUEUED';
+  inputs: string[];
+  outputs: string[];
+  latency: string;
+  throughput: string;
+  memory: string;
+  description: string;
+  subscribers: string[];
+}
+
+const agentsList: AgentInfo[] = [
+  { 
+    id: 'planner', 
+    label: 'Planner / Orchestrator', 
+    role: 'Core Coordination Swarm Lead',
+    icon: BrainCircuit, 
+    status: 'PROCESSING',
+    inputs: ['User Query', 'Marine Telemetry Streams', 'Vessel States'],
+    outputs: ['Multi-Agent Execution DAG', 'Task Delegations'],
+    latency: '112ms',
+    throughput: '240 req/min',
+    memory: '34 MB',
+    description: 'Dynamic graph scheduler responsible for breaking complex maritime intents into specialized agent sub-tasks.',
+    subscribers: ['Language & Intent', 'Marine Data Discovery', 'Risk Assessment']
+  },
+  { 
+    id: 'language', 
+    label: 'Language & Intent', 
+    role: 'Natural Language Understanding',
+    icon: MessageSquare, 
+    status: 'COMPLETE',
+    inputs: ['Natural Language Prompts', 'Voice Audio Transcription'],
+    outputs: ['Structured Intent Vector', 'Temporal & Spatial Anchors'],
+    latency: '85ms',
+    throughput: '180 req/min',
+    memory: '28 MB',
+    description: 'Translates colloquial fisherman queries and fleet commander directives into formal spatial-temporal constraints.',
+    subscribers: ['Planner / Orchestrator']
+  },
+  { 
+    id: 'marine_data', 
+    label: 'Marine Data Discovery', 
+    role: 'Multi-Source Telemetry Ingestion',
+    icon: Database, 
+    status: 'PROCESSING',
+    inputs: ['MOSDAC INSAT-3DR', 'INCOIS Advisories', 'AIS Feeds'],
+    outputs: ['Normalized GeoJSON Feature Collections', 'Raster Grids'],
+    latency: '182ms',
+    throughput: '512 req/min',
+    memory: '64 MB',
+    description: 'Fetches, sanitizes, and indexes distributed satellite and coastal sensor feeds into unified tensors.',
+    subscribers: ['Ocean Analytics', 'Weather Intelligence', 'Geospatial Reasoning']
+  },
+  { 
+    id: 'weather', 
+    label: 'Weather Intelligence', 
+    role: 'Meteorological Risk Inference',
+    icon: CloudRain, 
+    status: 'COMPLETE',
+    inputs: ['IMD WRF 3km', 'ECMWF Wind Vectors', 'Convective Storm Cells'],
+    outputs: ['Squall Line Alerts', 'Wave Shear Predictions'],
+    latency: '145ms',
+    throughput: '320 req/min',
+    memory: '42 MB',
+    description: 'Evaluates tropical storm tracks, sudden squalls, and monsoonal fronts for vessel transit safety.',
+    subscribers: ['Risk Assessment', 'Fleet Optimization']
+  },
+  { 
+    id: 'ocean', 
+    label: 'Ocean Analytics', 
+    role: 'Hydrodynamics & PFZ Engine',
+    icon: Waves, 
+    status: 'PROCESSING',
+    inputs: ['SST Gradients (INSAT)', 'Chlorophyll-a (OCM-3)', 'Swell Models'],
+    outputs: ['PFZ Probability Maps', 'Eddy Boundary Detections'],
+    latency: '210ms',
+    throughput: '290 req/min',
+    memory: '58 MB',
+    description: 'Pinpoints thermal fronts and chlorophyll confluence zones to predict rich pelagic feeding areas.',
+    subscribers: ['Risk Assessment', 'Fleet Optimization']
+  },
+  { 
+    id: 'risk', 
+    label: 'Risk Assessment', 
+    role: 'Maritime Boundary & Hazard Engine',
+    icon: ShieldAlert, 
+    status: 'COMPLETE',
+    inputs: ['EEZ Geofence Vectors', 'Weather Warnings', 'AIS Density'],
+    outputs: ['Safety Score [0-100]', 'Perimeter Breach Alerts'],
+    latency: '94ms',
+    throughput: '410 req/min',
+    memory: '30 MB',
+    description: 'Continuous physics-informed risk classifier evaluating nautical hazards, depth limits, and border limits.',
+    subscribers: ['Fleet Optimization', 'Visualization']
+  },
+  { 
+    id: 'geo', 
+    label: 'Geospatial Reasoning', 
+    role: 'Spatial Indexing & Spatial Joins',
+    icon: Map, 
+    status: 'COMPLETE',
+    inputs: ['H3 Hexagonal Indices', 'Bathymetry Grids', 'Harbor Boundaries'],
+    outputs: ['Great Circle Polylines', 'Polygon Intersections'],
+    latency: '76ms',
+    throughput: '620 req/min',
+    memory: '36 MB',
+    description: 'Fast H3 spatial indexing and topological queries for real-time proximity calculations.',
+    subscribers: ['Fleet Optimization', 'Visualization']
+  },
+  { 
+    id: 'fleet', 
+    label: 'Fleet Optimization', 
+    role: 'QUBO / Quantum-Inspired Routing',
+    icon: Ship, 
+    status: 'PROCESSING',
+    inputs: ['Vessel Specifics', 'Port Windows', 'Hydrodynamic Drag Models'],
+    outputs: ['Pareto Route Solutions', 'Throttle Schedules'],
+    latency: '340ms',
+    throughput: '120 req/min',
+    memory: '82 MB',
+    description: 'Solves quadratic unconstrained binary optimization problems to balance fuel savings against voyage time.',
+    subscribers: ['Visualization', 'Explainability']
+  },
+  { 
+    id: 'viz', 
+    label: 'Visualization', 
+    role: 'Shader & Canvas Rendering Core',
+    icon: LineChart, 
+    status: 'COMPLETE',
+    inputs: ['Pareto Arrays', 'Raster Heatmaps', 'Particle Trajectories'],
+    outputs: ['WebGPU / Leaflet Layer Payloads', 'HUD Telemetry Arrays'],
+    latency: '45ms',
+    throughput: '800 req/min',
+    memory: '48 MB',
+    description: 'Prepares rich graphical primitives for smooth 60fps mission control rendering.',
+    subscribers: ['Web Interface']
+  },
+  { 
+    id: 'explain', 
+    label: 'Explainability', 
+    role: 'Data Provenance & Lineage Tracer',
+    icon: Info, 
+    status: 'COMPLETE',
+    inputs: ['Agent Execution DAG', 'Source Weights', 'Model Confidence'],
+    outputs: ['Human-Readable Why? Reports', 'Attribution Trees'],
+    latency: '62ms',
+    throughput: '210 req/min',
+    memory: '24 MB',
+    description: 'Synthesizes mathematical model weights and satellite provenance into clear plain-language rationale.',
+    subscribers: ['User Interface']
+  },
 ];
 
 export default function AgentNetwork() {
-  const [activeAgent, setActiveAgent] = useState('planner');
+  const [activeAgentId, setActiveAgentId] = useState('planner');
+  const [simulatedLogs, setSimulatedLogs] = useState<LogEntry[]>([
+    { id: '1', time: '12:42:18', source: 'PLANNER', message: 'Swarm initialized. 10 specialized agent workers registered.', level: 'info' },
+    { id: '2', time: '12:42:19', source: 'MOSDAC_INGEST', message: 'INSAT-3DR thermal raster (Sector 4) decoded.', level: 'info' },
+    { id: '3', time: '12:42:20', source: 'OCEAN_ANALYTICS', message: 'Thermal front confluence detected in Kochi Sector K-04.', level: 'success' },
+    { id: '4', time: '12:42:21', source: 'RISK_ENGINE', message: 'Safety validation passed. Swell threshold <1.8m confirmed.', level: 'success' },
+    { id: '5', time: '12:42:22', source: 'QUBO_OPTIMIZER', message: 'Pareto-optimal throttle schedule computed for Sagar Kanya.', level: 'info' }
+  ]);
+
+  const activeAgent = agentsList.find(a => a.id === activeAgentId) || agentsList[0];
+
+  useEffect(() => {
+    const logInterval = setInterval(() => {
+      const randomAgents = ['OCEAN_ANALYTICS', 'WEATHER_INTEL', 'RISK_ENGINE', 'QUBO_OPTIMIZER', 'PLANNER'];
+      const randomMsg = [
+        'Stream frame processed: latency 112ms.',
+        'SST boundary re-checked against INCOIS baseline.',
+        'Evaluated 4,096 Hamiltonian states.',
+        'EEZ perimeter boundary verified clear.',
+        'Generated confidence interval 89.2% Nominal.'
+      ];
+      const now = new Date();
+      const timeStr = now.toISOString().substring(11, 19);
+
+      const newLog: LogEntry = {
+        id: String(Date.now()),
+        time: timeStr,
+        source: randomAgents[Math.floor(Math.random() * randomAgents.length)],
+        message: randomMsg[Math.floor(Math.random() * randomMsg.length)],
+        level: Math.random() > 0.3 ? 'info' : 'success'
+      };
+
+      setSimulatedLogs(prev => [...prev.slice(-12), newLog]);
+    }, 3500);
+
+    return () => clearInterval(logInterval);
+  }, []);
 
   return (
-    <div className="flex h-full w-full overflow-hidden p-6 gap-6">
+    <div className="flex h-full w-full overflow-hidden p-4 gap-4 font-sans select-none bg-[#070D18]">
       
-      {/* Network Visualization */}
-      <div className="flex-[2] bg-surface-elevated rounded-xl border border-border relative overflow-hidden flex items-center justify-center">
-        {/* Background Grid */}
-        <div className="absolute inset-0 bg-ocean-grid opacity-20 pointer-events-none"></div>
+      {/* Interactive 10-Agent Swarm Visualization Graph (Left) */}
+      <div className="flex-[2] bg-[#091120] rounded-xl border border-slate-800 relative overflow-hidden flex flex-col shadow-xl">
         
-        <div className="relative w-full max-w-3xl h-[800px] flex flex-col items-center justify-between py-12">
-          
-          {/* We simplify by just listing them vertically with branches */}
-          {/* Level 1 */}
-          <AgentNode agent={agents[0]} isActive={activeAgent === agents[0].id} onClick={() => setActiveAgent(agents[0].id)} />
-          
-          {/* Level 2 */}
-          <div className="w-[2px] h-8 bg-primary/30"></div>
-          <AgentNode agent={agents[1]} isActive={activeAgent === agents[1].id} onClick={() => setActiveAgent(agents[1].id)} />
-          
-          {/* Level 3 */}
-          <div className="w-[2px] h-8 bg-primary/30"></div>
-          <AgentNode agent={agents[2]} isActive={activeAgent === agents[2].id} onClick={() => setActiveAgent(agents[2].id)} />
-          
-          {/* Branch Level 4 */}
-          <div className="w-64 h-[2px] bg-primary/30 mt-8 relative flex justify-between">
-             <div className="w-[2px] h-8 bg-primary/30 absolute left-0 top-0"></div>
-             <div className="w-[2px] h-8 bg-primary/30 absolute right-0 top-0"></div>
+        {/* Header HUD */}
+        <div className="p-3.5 border-b border-slate-800 bg-[#070D18] flex items-center justify-between z-10">
+          <div className="flex items-center space-x-2">
+            <Cpu className="w-4 h-4 text-cyan-400" />
+            <h2 className="text-xs font-bold text-white uppercase tracking-wider">
+              Agent Intelligence Topology (10 Active Nodes)
+            </h2>
           </div>
-          
-          <div className="flex justify-between w-96 mt-4">
-            <div className="flex flex-col items-center space-y-8">
-              <AgentNode agent={agents[3]} isActive={activeAgent === agents[3].id} onClick={() => setActiveAgent(agents[3].id)} />
-              <div className="w-[2px] h-8 bg-primary/30"></div>
-              <AgentNode agent={agents[5]} isActive={activeAgent === agents[5].id} onClick={() => setActiveAgent(agents[5].id)} />
-            </div>
-            <div className="flex flex-col items-center space-y-8">
-              <AgentNode agent={agents[4]} isActive={activeAgent === agents[4].id} onClick={() => setActiveAgent(agents[4].id)} />
-              <div className="w-[2px] h-8 bg-primary/30"></div>
-              <AgentNode agent={agents[6]} isActive={activeAgent === agents[6].id} onClick={() => setActiveAgent(agents[6].id)} />
-            </div>
+          <div className="flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-[11px] text-emerald-400 font-medium">Swarm Online</span>
           </div>
-          
-          {/* Merge Branch Level 6 */}
-          <div className="w-64 h-[2px] bg-primary/30 mt-4 relative flex justify-between">
-             <div className="w-[2px] h-8 bg-primary/30 absolute left-0 bottom-0"></div>
-             <div className="w-[2px] h-8 bg-primary/30 absolute right-0 bottom-0"></div>
-          </div>
-          
-          <div className="w-[2px] h-8 bg-primary/30 mt-8"></div>
-          <AgentNode agent={agents[7]} isActive={activeAgent === agents[7].id} onClick={() => setActiveAgent(agents[7].id)} />
+        </div>
 
-          <div className="w-[2px] h-8 bg-primary/30"></div>
-          <AgentNode agent={agents[8]} isActive={activeAgent === agents[8].id} onClick={() => setActiveAgent(agents[8].id)} />
-          
-          <div className="w-[2px] h-8 bg-primary/30"></div>
-          <AgentNode agent={agents[9]} isActive={activeAgent === agents[9].id} onClick={() => setActiveAgent(agents[9].id)} />
+        {/* Graph Canvas */}
+        <div className="flex-1 relative flex items-center justify-center p-6 overflow-y-auto scrollbar-none">
+          <div className="absolute inset-0 bg-ocean-grid opacity-15 pointer-events-none" />
+
+          {/* Connected Topology Layout */}
+          <div className="relative w-full max-w-2xl py-6 flex flex-col items-center justify-between space-y-6 z-10">
+            
+            {/* Level 1: Orchestrator */}
+            <AgentNodeButton 
+              agent={agentsList[0]} 
+              isActive={activeAgentId === agentsList[0].id} 
+              onClick={() => setActiveAgentId(agentsList[0].id)} 
+            />
+
+            {/* Connecting Conduits */}
+            <div className="w-0.5 h-6 bg-cyan-500/40" />
+
+            {/* Level 2: Intent & Telemetry Ingestion */}
+            <div className="flex items-center justify-center space-x-6 w-full">
+              <AgentNodeButton 
+                agent={agentsList[1]} 
+                isActive={activeAgentId === agentsList[1].id} 
+                onClick={() => setActiveAgentId(agentsList[1].id)} 
+              />
+              <AgentNodeButton 
+                agent={agentsList[2]} 
+                isActive={activeAgentId === agentsList[2].id} 
+                onClick={() => setActiveAgentId(agentsList[2].id)} 
+              />
+            </div>
+
+            <div className="w-72 h-0.5 bg-slate-700 relative flex justify-between">
+              <div className="w-0.5 h-6 bg-slate-700 absolute left-0 top-0" />
+              <div className="w-0.5 h-6 bg-slate-700 absolute right-0 top-0" />
+            </div>
+
+            {/* Level 3: Ocean & Weather Reasoning Matrix */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 w-full">
+              <AgentNodeButton agent={agentsList[3]} isActive={activeAgentId === agentsList[3].id} onClick={() => setActiveAgentId(agentsList[3].id)} />
+              <AgentNodeButton agent={agentsList[4]} isActive={activeAgentId === agentsList[4].id} onClick={() => setActiveAgentId(agentsList[4].id)} />
+              <AgentNodeButton agent={agentsList[5]} isActive={activeAgentId === agentsList[5].id} onClick={() => setActiveAgentId(agentsList[5].id)} />
+              <AgentNodeButton agent={agentsList[6]} isActive={activeAgentId === agentsList[6].id} onClick={() => setActiveAgentId(agentsList[6].id)} />
+            </div>
+
+            <div className="w-72 h-0.5 bg-slate-700 relative flex justify-between">
+              <div className="w-0.5 h-6 bg-slate-700 absolute left-0 bottom-0" />
+              <div className="w-0.5 h-6 bg-slate-700 absolute right-0 bottom-0" />
+            </div>
+
+            {/* Level 4: Fleet Optimization & Explainability */}
+            <div className="flex items-center justify-center space-x-5 w-full">
+              <AgentNodeButton agent={agentsList[7]} isActive={activeAgentId === agentsList[7].id} onClick={() => setActiveAgentId(agentsList[7].id)} />
+              <AgentNodeButton agent={agentsList[8]} isActive={activeAgentId === agentsList[8].id} onClick={() => setActiveAgentId(agentsList[8].id)} />
+              <AgentNodeButton agent={agentsList[9]} isActive={activeAgentId === agentsList[9].id} onClick={() => setActiveAgentId(agentsList[9].id)} />
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Stream Bar */}
+        <div className="p-3 border-t border-slate-800 bg-[#070D18]">
+          <DataStream logs={simulatedLogs} maxHeight="max-h-24" title="Live Multi-Agent Trace" />
         </div>
       </div>
 
-      {/* Details Panel */}
-      <div className="flex-1 bg-surface-elevated rounded-xl border border-border p-6 flex flex-col">
-        {agents.map((agent) => (
-          agent.id === activeAgent && (
-            <motion.div 
-              key={agent.id}
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex flex-col h-full"
-            >
-              <div className="flex items-center space-x-4 border-b border-border pb-6 mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/30 flex items-center justify-center glow-cyan">
-                  <agent.icon className="w-8 h-8 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">{agent.label}</h2>
-                  <div className="flex items-center space-x-2 mt-1">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    <span className="text-xs uppercase tracking-wider text-green-500 font-semibold">Active & Listening</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-6 flex-1">
-                <div>
-                  <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-2">Purpose</h3>
-                  <p className="text-sm text-foreground bg-surface p-4 rounded-lg border border-border">
-                    Responsible for coordinating sub-tasks, reasoning over marine data, and returning structured output to the main orchestrator or user.
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-2">Current Task</h3>
-                  <div className="text-sm text-primary font-mono bg-primary/5 border border-primary/20 p-4 rounded-lg">
-                    {'>'} Awaiting instruction...
-                  </div>
-                </div>
+      {/* Agent Telemetry Inspector Panel (Right) */}
+      <div className="flex-1 bg-[#091120] rounded-xl border border-slate-800 p-5 flex flex-col shadow-xl overflow-y-auto scrollbar-thin">
+        
+        <div className="flex items-center justify-between border-b border-slate-800 pb-3.5 mb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+              <activeAgent.icon className="w-5 h-5 text-cyan-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">{activeAgent.label}</h2>
+              <span className="text-[11px] text-slate-400 font-medium">{activeAgent.role}</span>
+            </div>
+          </div>
 
-                <div>
-                  <h3 className="text-xs uppercase tracking-widest text-muted-foreground font-semibold mb-2">Data Subscribed</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {['SST (Satellite)', 'AIS Telemetry', 'IMD Weather APIs'].map(t => (
-                      <span key={t} className="text-xs bg-surface border border-border px-3 py-1 rounded-full text-foreground">{t}</span>
-                    ))}
-                  </div>
+          <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-medium px-2 py-0.5 rounded border border-emerald-500/30">
+            {activeAgent.status}
+          </span>
+        </div>
+
+        {/* Live Metrics Quad */}
+        <div className="grid grid-cols-3 gap-2 mb-4 text-xs">
+          <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-medium">Latency</span>
+            <span className="font-bold text-cyan-400 font-mono text-sm">{activeAgent.latency}</span>
+          </div>
+          <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-medium">Throughput</span>
+            <span className="font-bold text-white font-mono text-sm">{activeAgent.throughput}</span>
+          </div>
+          <div className="p-2.5 bg-slate-900/80 rounded-lg border border-slate-800">
+            <span className="text-[10px] text-slate-400 block font-medium">Memory</span>
+            <span className="font-bold text-emerald-400 font-mono text-sm">{activeAgent.memory}</span>
+          </div>
+        </div>
+
+        <div className="space-y-3.5 text-xs flex-1">
+          <div>
+            <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+              Role & Responsibility
+            </span>
+            <p className="p-3 bg-slate-900/80 border border-slate-800 rounded-lg text-slate-300 leading-relaxed text-xs">
+              {activeAgent.description}
+            </p>
+          </div>
+
+          <div>
+            <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+              Input Data Contracts
+            </span>
+            <div className="space-y-1">
+              {activeAgent.inputs.map((inp, idx) => (
+                <div key={idx} className="flex items-center space-x-2 text-xs p-2 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-200">
+                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                  <span>{inp}</span>
                 </div>
-              </div>
-            </motion.div>
-          )
-        ))}
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <span className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+              Output Artifacts
+            </span>
+            <div className="space-y-1">
+              {activeAgent.outputs.map((out, idx) => (
+                <div key={idx} className="flex items-center space-x-2 text-xs p-2 rounded-lg bg-slate-900/80 border border-slate-800 text-emerald-300">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 flex-shrink-0" />
+                  <span>{out}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-slate-800 mt-3">
+          <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-between text-cyan-300 text-xs">
+            <span className="font-semibold text-[11px]">Subscribed by:</span>
+            <span className="text-slate-200 font-medium text-xs">{activeAgent.subscribers.join(', ')}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function AgentNode({ agent, isActive, onClick }: { agent: any, isActive: boolean, onClick: () => void }) {
+function AgentNodeButton({ agent, isActive, onClick }: { agent: AgentInfo, isActive: boolean, onClick: () => void }) {
+  const Icon = agent.icon;
+
   return (
-    <motion.button 
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
+    <button 
       onClick={onClick}
       className={cn(
-        "flex items-center space-x-3 px-6 py-3 rounded-full border transition-all duration-300 relative group z-10",
+        "flex items-center space-x-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all duration-150 relative group cursor-pointer",
         isActive 
-          ? "bg-primary text-primary-foreground border-primary shadow-[0_0_20px_rgba(14,165,233,0.5)]" 
-          : "bg-surface text-muted-foreground border-border hover:border-primary/50 hover:text-foreground"
+          ? "bg-cyan-500/20 text-white border-cyan-400 shadow-md font-semibold" 
+          : "bg-slate-900/90 text-slate-300 border-slate-800 hover:border-slate-700 hover:text-white"
       )}
     >
-      <agent.icon className="w-5 h-5" />
-      <span className="text-sm font-semibold tracking-wide">{agent.label}</span>
+      <Icon className={cn("w-3.5 h-3.5", isActive ? "text-cyan-300" : "text-cyan-400")} />
+      <span className="truncate max-w-[130px]">{agent.label}</span>
       
-      {/* Processing Animation Ring */}
       {isActive && (
-        <span className="absolute inset-0 rounded-full border border-primary/50 animate-ping opacity-20"></span>
+        <span className="absolute -top-1 -right-1 flex h-2 w-2">
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
+        </span>
       )}
-    </motion.button>
-  )
+    </button>
+  );
 }
+
+

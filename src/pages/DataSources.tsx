@@ -1,98 +1,201 @@
 import React from 'react';
-import { Database, Network, Search, Globe, ArrowRight } from 'lucide-react';
+import { Database, Network, Search, Globe, ArrowRight, Radio, Server, Activity, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import StatusIndicator from '@/components/hud/StatusIndicator';
 
-const sources = [
-  { name: 'MOSDAC / ISRO', desc: 'Satellite Oceanography', color: 'bg-primary/20 text-primary border-primary/30' },
-  { name: 'INCOIS', desc: 'Marine Advisories & PFZ', color: 'bg-green-500/20 text-green-500 border-green-500/30' },
-  { name: 'IMD', desc: 'Weather & Cyclone Warnings', color: 'bg-warning/20 text-warning border-warning/30' },
-  { name: 'Copernicus Marine', desc: 'Global Ocean Models', color: 'bg-cyan-500/20 text-cyan-500 border-cyan-500/30' },
-  { name: 'NOAA', desc: 'SST & Climate Data', color: 'bg-blue-500/20 text-blue-500 border-blue-500/30' },
-  { name: 'Global Fishing Watch', desc: 'Vessel Activity', color: 'bg-purple-500/20 text-purple-500 border-purple-500/30' },
-  { name: 'AIS', desc: 'Live Ship Tracking', color: 'bg-pink-500/20 text-pink-500 border-pink-500/30' },
-  { name: 'IMO / MRV', desc: 'Emissions Baselines', color: 'bg-orange-500/20 text-orange-500 border-orange-500/30' },
+interface DataSource {
+  name: string;
+  agency: string;
+  type: string;
+  status: 'CONNECTED' | 'DEMO_STREAM' | 'SYNCING';
+  latency: string;
+  lastUpdate: string;
+  records: string;
+  frequency: string;
+  payload: string;
+}
+
+const dataSourcesList: DataSource[] = [
+  {
+    name: 'MOSDAC / ISRO',
+    agency: 'Space Applications Centre (SAC)',
+    type: 'Satellite Oceanography (INSAT-3DR, Oceansat-3)',
+    status: 'CONNECTED',
+    latency: '182ms',
+    lastUpdate: '12:42:18 UTC',
+    records: '18,420 Rasters',
+    frequency: 'Every 30 mins',
+    payload: 'SST NetCDF4, Chlorophyll OCM-3, AOD'
+  },
+  {
+    name: 'INCOIS ADVISORY CORE',
+    agency: 'Ministry of Earth Sciences (MoES)',
+    type: 'PFZ Multi-Spectral Bulletins & Ocean State',
+    status: 'CONNECTED',
+    latency: '145ms',
+    lastUpdate: '12:41:50 UTC',
+    records: '1,240 Bulletins',
+    frequency: 'Daily 06:00 & 18:00',
+    payload: 'PFZ Shapefiles, OSF Swell Alert Feed'
+  },
+  {
+    name: 'IMD WEATHER STREAM',
+    agency: 'India Meteorological Department',
+    type: 'WRF Numerical Weather Predictions',
+    status: 'CONNECTED',
+    latency: '110ms',
+    lastUpdate: '12:42:05 UTC',
+    records: '9,860 Grid Points',
+    frequency: 'Hourly 3km Grid',
+    payload: '10m Wind U/V Vectors, Storm Tracks, CAPE'
+  },
+  {
+    name: 'COPERNICUS MARINE (CMEMS)',
+    agency: 'European Space Agency (ESA)',
+    type: 'Global Hydrodynamic Physics Models',
+    status: 'CONNECTED',
+    latency: '320ms',
+    lastUpdate: '12:38:00 UTC',
+    records: '4,500 Profiles',
+    frequency: 'Every 6 hours',
+    payload: 'Global Salinity, Surface Current Vectors'
+  },
+  {
+    name: 'AIS REAL-TIME TRACKING',
+    agency: 'DG Shipping / Coastal AIS Network',
+    type: 'Terrestrial & Satellite AIS Transponder Stream',
+    status: 'CONNECTED',
+    latency: '85ms',
+    lastUpdate: '12:42:22 UTC',
+    records: '247 Vessels in EEZ',
+    frequency: 'Sub-second stream',
+    payload: 'MMSI, SOG, COG, Lat/Lon, Vessel Class'
+  },
+  {
+    name: 'GLOBAL FISHING WATCH',
+    agency: 'GFW Research Pipeline',
+    type: 'Historical Fishing Density & AIS Inference',
+    status: 'DEMO_STREAM',
+    latency: '240ms',
+    lastUpdate: '12:00:00 UTC',
+    records: '1.2M Vessel Hours',
+    frequency: 'Daily Batch',
+    payload: 'Apparent Fishing Effort (AFE) Rasters'
+  }
 ];
 
 export default function DataSources() {
   return (
-    <div className="p-6 h-full overflow-y-auto flex flex-col items-center">
-      <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold text-foreground">Data Sources Architecture</h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl">Integrating disparate marine intelligence streams into a unified agentic core.</p>
-      </div>
-
-      <div className="w-full max-w-6xl flex flex-col md:flex-row items-center justify-between space-y-12 md:space-y-0">
-        
-        {/* Sources Column */}
-        <div className="grid grid-cols-1 gap-4 w-full md:w-80">
-          {sources.map((source, idx) => (
-            <div key={idx} className={cn("p-4 rounded-xl border relative flex items-center justify-between group", source.color)}>
-              <div>
-                <h3 className="font-bold">{source.name}</h3>
-                <p className="text-xs opacity-80">{source.desc}</p>
-              </div>
-              <Database className="w-5 h-5 opacity-60 group-hover:opacity-100 transition-opacity" />
-              {/* Connection line indicator */}
-              <div className="hidden md:block absolute top-1/2 -right-12 w-12 h-px bg-current opacity-30"></div>
-            </div>
-          ))}
-        </div>
-
-        {/* Central Core */}
-        <div className="relative flex flex-col items-center flex-1 px-12">
-           <div className="w-48 h-48 rounded-full border border-primary bg-primary/5 flex flex-col items-center justify-center relative shadow-[0_0_50px_rgba(14,165,233,0.2)]">
-              {/* Animated Rings */}
-              <div className="absolute inset-0 rounded-full border border-primary/20 animate-ping" style={{ animationDuration: '3s' }}></div>
-              <div className="absolute -inset-4 rounded-full border border-primary/10 animate-spin-slow border-t-primary/40"></div>
-              
-              <Network className="w-12 h-12 text-primary mb-2" />
-              <h2 className="font-bold text-center leading-tight">NeerMitra<br/>Data Core</h2>
-           </div>
-           
-           <div className="h-24 w-px bg-primary/30 my-4 flex items-center justify-center">
-             <ArrowRight className="w-4 h-4 text-primary rotate-90" />
-           </div>
-
-           <div className="w-full bg-surface-elevated border border-border p-6 rounded-xl text-center shadow-lg relative">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 via-primary to-warning"></div>
-              <h3 className="text-xl font-bold mb-2">Agentic Orchestration Layer</h3>
-              <p className="text-sm text-muted-foreground">Normalizes spatial, temporal, and categorical data for AI consumption.</p>
-           </div>
-        </div>
-
-        {/* Output Column */}
-        <div className="grid grid-cols-1 gap-6 w-full md:w-72">
-           <div className="p-5 rounded-xl border border-border bg-surface flex items-start space-x-4">
-             <div className="bg-primary/10 p-2 rounded-lg text-primary"><Search className="w-5 h-5" /></div>
-             <div>
-               <h4 className="font-bold text-sm">AI Models</h4>
-               <p className="text-xs text-muted-foreground mt-1">Predictions & Insights</p>
-             </div>
-           </div>
-           
-           <div className="p-5 rounded-xl border border-border bg-surface flex items-start space-x-4">
-             <div className="bg-green-500/10 p-2 rounded-lg text-green-500"><Network className="w-5 h-5" /></div>
-             <div>
-               <h4 className="font-bold text-sm">Optimization Engine</h4>
-               <p className="text-xs text-muted-foreground mt-1">Quantum-Inspired Solutions</p>
-             </div>
-           </div>
-
-           <div className="p-5 rounded-xl border border-border bg-surface flex items-start space-x-4">
-             <div className="bg-warning/10 p-2 rounded-lg text-warning"><Globe className="w-5 h-5" /></div>
-             <div>
-               <h4 className="font-bold text-sm">Dashboards</h4>
-               <p className="text-xs text-muted-foreground mt-1">Command & Control UI</p>
-             </div>
-           </div>
-        </div>
-      </div>
+    <div className="p-4 md:p-6 h-full overflow-y-auto font-sans select-none bg-[#070D18] scrollbar-thin">
       
-      <div className="mt-16 text-center max-w-2xl bg-surface border border-border rounded-lg p-4">
-        <p className="text-xs text-muted-foreground">
-          <span className="font-bold text-foreground">Note:</span> This prototype utilizes public datasets and physics-based simulated models to demonstrate the architecture where proprietary commercial fleet telemetry or real-time restricted satellite feeds are unavailable.
-        </p>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-6 bg-[#091120] p-4 rounded-xl shadow-md border">
+        <div>
+          <div className="flex items-center space-x-2.5">
+            <Database className="w-5 h-5 text-cyan-400" />
+            <h1 className="text-base font-bold text-white">
+              Telemetry Data Ingestion Matrix
+            </h1>
+          </div>
+          <p className="text-xs text-slate-400 mt-0.5">
+            Live monitoring of governmental satellite, weather, and transponder streams normalized for AI ingestion.
+          </p>
+        </div>
+
+        <div className="flex items-center space-x-2 text-xs">
+          <span className="text-[11px] bg-emerald-500/10 text-emerald-400 px-3 py-1.5 rounded-lg border border-emerald-500/30 font-medium flex items-center space-x-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>5 Connected • 1 Demo Stream</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Grid of Data Source Nodes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        {dataSourcesList.map((source, idx) => (
+          <div 
+            key={idx} 
+            className="bg-[#091120] border border-slate-800 rounded-xl p-4 shadow-sm flex flex-col justify-between hover:border-slate-700 transition-colors"
+          >
+            <div>
+              {/* Card Header */}
+              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2.5 mb-3">
+                <div>
+                  <h3 className="text-xs font-bold text-white">{source.name}</h3>
+                  <span className="text-[11px] text-cyan-400">{source.agency}</span>
+                </div>
+                <span className={cn(
+                  "text-[10px] px-2 py-0.5 rounded font-medium border",
+                  source.status === 'CONNECTED' 
+                    ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" 
+                    : "bg-blue-500/10 text-blue-300 border-blue-500/30"
+                )}>
+                  {source.status === 'CONNECTED' ? '● Connected' : '○ Demo Stream'}
+                </span>
+              </div>
+
+              {/* Detail Payload */}
+              <div className="space-y-2 text-xs mb-3.5">
+                <div className="p-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-medium">Data Stream Type</span>
+                  <span className="text-xs text-slate-200 font-semibold">{source.type}</span>
+                </div>
+                <div className="p-2 bg-slate-900/80 rounded-lg border border-slate-800">
+                  <span className="text-[10px] text-slate-400 block font-medium">Normalized Payloads</span>
+                  <span className="text-xs text-cyan-300 truncate block font-mono">{source.payload}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Metrics Footer */}
+            <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800/80 text-center text-xs">
+              <div className="p-1.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span className="text-slate-400 uppercase block text-[9px]">Latency</span>
+                <span className="font-bold text-cyan-400 font-mono">{source.latency}</span>
+              </div>
+              <div className="p-1.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span className="text-slate-400 uppercase block text-[9px]">Update</span>
+                <span className="font-bold text-emerald-400 font-mono">{source.lastUpdate.substring(0, 8)}</span>
+              </div>
+              <div className="p-1.5 bg-slate-900/80 rounded-lg border border-slate-800">
+                <span className="text-slate-400 uppercase block text-[9px]">Records</span>
+                <span className="font-bold text-white truncate block font-mono">{source.records.split(' ')[0]}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Orchestration Pipeline Topology */}
+      <div className="bg-[#091120] border border-slate-800 rounded-xl p-5 shadow-sm">
+        <h2 className="text-xs font-semibold text-white uppercase tracking-wider mb-4 flex items-center space-x-2">
+          <Network className="w-4 h-4 text-cyan-400" />
+          <span>Data Normalization & AI Pipeline</span>
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800">
+            <span className="text-[11px] text-cyan-400 font-bold uppercase block mb-1">Stage 1: Ingestion & Decoding</span>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Receives HDF5, NetCDF, GeoTIFF rasters from MOSDAC/INCOIS and raw NMEA AIS sentences over secure webhooks.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800">
+            <span className="text-[11px] text-cyan-400 font-bold uppercase block mb-1">Stage 2: Spatial-Temporal Fusion</span>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Interpolates uneven satellite passes onto a continuous 1km H3 mesh for uniform multi-layer overlay.
+            </p>
+          </div>
+          <div className="p-3.5 rounded-lg bg-slate-900/80 border border-slate-800">
+            <span className="text-[11px] text-cyan-400 font-bold uppercase block mb-1">Stage 3: Agentic Dispatch</span>
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Streams normalized features to Ocean Analytics, Weather, and Risk Assessment agent swarms in sub-200ms.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+
+

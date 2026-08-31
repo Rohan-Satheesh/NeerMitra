@@ -1,61 +1,131 @@
-import React from 'react';
-import { Layers, Database, Cpu, BrainCircuit, MonitorSmartphone, ArrowDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { Layers, Database, Cpu, BrainCircuit, MonitorSmartphone, ArrowDown, ChevronRight, Server, ShieldCheck, Radio, Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const layers = [
-  { id: 'L1', name: 'DATA INGESTION', icon: Database, items: ['Satellite Data (SST, Chl)', 'Weather Forecasts', 'AIS Telemetry', 'Marine Advisories'], color: 'text-cyan' },
-  { id: 'L2', name: 'DATA PROCESSING', icon: Layers, items: ['ETL Pipelines', 'Geospatial Engine', 'Feature Store', 'Data Cleaning'], color: 'text-primary' },
-  { id: 'L3', name: 'INTELLIGENCE', icon: Cpu, items: ['ML/DL Models', 'PFZ Prediction', 'Fuel Prediction', 'Quantum-Inspired Opt.'], color: 'text-green-500' },
-  { id: 'L4', name: 'AGENTIC ORCHESTRATION', icon: BrainCircuit, items: ['Planner Agent', 'Marine Specialist Agents', 'Risk Assessor', 'Explainability Engine'], color: 'text-warning' },
-  { id: 'L5', name: 'PRESENTATION', icon: MonitorSmartphone, items: ['Web Command Center', 'Fisherman PWA / Mobile', 'Voice Interfaces', 'SMS Alerts'], color: 'text-foreground' },
+const layersList = [
+  { 
+    id: 'L1', 
+    name: 'DATA INGESTION & SATELLITE TELEMETRY', 
+    icon: Database, 
+    items: ['MOSDAC INSAT-3DR (SST 1km)', 'INCOIS OCM-3 Chlorophyll', 'IMD WRF 3km Weather', 'DG Shipping AIS Transponders', 'Copernicus Global Hydrodynamics'], 
+    color: 'text-cyan-400',
+    bgColor: 'bg-cyan-500/10 border-cyan-500/30',
+    details: 'Pulls real-time optical, infrared, and radar observations over automated asynchronous ETL microservices.'
+  },
+  { 
+    id: 'L2', 
+    name: 'SPATIAL-TEMPORAL FUSION & FEATURE STORE', 
+    icon: Layers, 
+    items: ['H3 Hexagonal Indexing (Res 8)', 'Bilinear Raster Interpolation', 'Geospatial Feature Store', 'NMEA Transponder Parser'], 
+    color: 'text-blue-400',
+    bgColor: 'bg-blue-500/10 border-blue-500/30',
+    details: 'Unifies disparate spatial resolutions into normalized tensor cubes accessible by multi-agent reasoning workers.'
+  },
+  { 
+    id: 'L3', 
+    name: 'PHYSICS-INFORMED & PREDICTIVE MODELS', 
+    icon: Cpu, 
+    items: ['PFZ Confluence Classifiers', 'Wave Watch III Simulation', 'Hydrodynamic Vessel Drag', 'Fuel Burn Physics Model'], 
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-500/10 border-emerald-500/30',
+    details: 'Combines ocean physics equations with machine learning models to forecast fishing potential and vessel resistance.'
+  },
+  { 
+    id: 'L4', 
+    name: 'MULTI-AGENT SWARM & QUBO OPTIMIZER', 
+    icon: BrainCircuit, 
+    items: ['Planner Orchestrator (DAG)', '9 Specialist Agent Swarm', 'Quantum-Inspired QUBO Engine', 'Data Provenance Tracer'], 
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-500/10 border-amber-500/30',
+    details: 'Solves complex multi-objective routing under weather & emission constraints with full lineage explainability.'
+  },
+  { 
+    id: 'L5', 
+    name: 'TACTICAL INTERFACE & EDGE PRESENTATION', 
+    icon: MonitorSmartphone, 
+    items: ['Mission Control Web OS', 'Fisherman High-Contrast PWA', 'Voice Query Processing', 'Emergency SOS Broadcast'], 
+    color: 'text-cyan-300',
+    bgColor: 'bg-cyan-500/10 border-cyan-500/40',
+    details: 'Delivers instantaneous command-and-control visualizations and offline-capable edge alerts to fishermen and commanders.'
+  },
 ];
 
 export default function Architecture() {
+  const [selectedLayer, setSelectedLayer] = useState(layersList[0]);
+
   return (
-    <div className="p-6 h-full overflow-y-auto flex flex-col items-center">
-      <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold text-foreground">System Architecture</h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl">A 5-layer architecture designed for scalable marine intelligence, integrating raw satellite telemetry down to edge-delivered insights.</p>
+    <div className="p-4 md:p-6 h-full overflow-y-auto font-sans select-none bg-[#070D18] scrollbar-thin">
+      
+      {/* Header */}
+      <div className="text-center max-w-3xl mx-auto mb-8">
+        <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-cyan-300 text-xs font-semibold mb-2">
+          <span>ISRO × INCOIS Architectural Specification</span>
+        </div>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-white">
+          NeerMitra 5-Layer System Blueprint
+        </h1>
+        <p className="text-xs text-slate-400 mt-1">
+          End-to-end pipeline connecting orbital satellite sensors to quantum-inspired fleet optimization and edge fisherman devices.
+        </p>
       </div>
 
-      <div className="w-full max-w-4xl space-y-4 relative pb-12">
-        {/* Connecting Line */}
-        <div className="absolute left-1/2 top-0 bottom-12 w-px bg-primary/30 -translate-x-1/2 z-0"></div>
+      {/* Main 5-Layer Stack */}
+      <div className="max-w-4xl mx-auto space-y-3 pb-8">
+        {layersList.map((layer, idx) => {
+          const Icon = layer.icon;
+          const isSelected = selectedLayer.id === layer.id;
 
-        {layers.map((layer, idx) => (
-          <div key={layer.id} className="relative z-10 flex flex-col items-center">
-            <div className="bg-surface-elevated border border-border rounded-xl p-6 w-full shadow-lg relative overflow-hidden group hover:border-primary/50 transition-colors">
-              <div className="absolute top-0 left-0 w-2 h-full bg-border group-hover:bg-primary transition-colors"></div>
-              
-              <div className="flex items-start space-x-6">
-                <div className="flex flex-col items-center justify-center w-24 h-24 rounded-lg bg-surface border border-border flex-shrink-0">
-                  <layer.icon className={`w-8 h-8 ${layer.color} mb-2`} />
-                  <span className={`font-mono font-bold text-xl ${layer.color}`}>{layer.id}</span>
-                </div>
-                
-                <div className="flex-1 py-2">
-                  <h2 className="text-lg font-bold tracking-widest uppercase mb-4 text-foreground">{layer.name}</h2>
-                  <div className="grid grid-cols-2 gap-3">
-                    {layer.items.map((item, i) => (
-                      <div key={i} className="flex items-center space-x-2 text-sm text-muted-foreground bg-background px-3 py-2 rounded border border-border">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary/50"></span>
-                        <span>{item}</span>
+          return (
+            <React.Fragment key={layer.id}>
+              <div 
+                onClick={() => setSelectedLayer(layer)}
+                className={cn(
+                  "p-5 rounded-xl border transition-all cursor-pointer shadow-sm relative overflow-hidden bg-[#091120] border-slate-800",
+                  isSelected ? "border-cyan-500/50 shadow-md" : "hover:border-slate-700"
+                )}
+              >
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center flex-shrink-0">
+                      <Icon className={cn("w-5 h-5", layer.color)} />
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className={cn("text-xs font-bold font-mono", layer.color)}>[{layer.id}]</span>
+                        <h2 className="text-sm font-bold text-white">{layer.name}</h2>
                       </div>
-                    ))}
+                      <p className="text-xs text-slate-300 mt-0.5">{layer.details}</p>
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase hidden md:inline">
+                    {layer.items.length} Subsystems
+                  </span>
+                </div>
+
+                {/* Subsystem Pills */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mt-4 pt-3 border-t border-slate-800/80">
+                  {layer.items.map((item, i) => (
+                    <div key={i} className="p-2 rounded-lg bg-slate-900/80 border border-slate-800 text-[11px] text-slate-300 truncate">
+                      • {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {idx < layersList.length - 1 && (
+                <div className="flex justify-center py-1">
+                  <div className="w-6 h-6 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center shadow-sm">
+                    <ArrowDown className="w-3 h-3 text-cyan-400" />
                   </div>
                 </div>
-              </div>
-            </div>
-
-            {idx !== layers.length - 1 && (
-              <div className="py-4">
-                <div className="w-8 h-8 rounded-full bg-surface border border-primary/50 flex items-center justify-center shadow-[0_0_15px_rgba(14,165,233,0.3)]">
-                  <ArrowDown className="w-4 h-4 text-primary" />
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+              )}
+            </React.Fragment>
+          );
+        })}
       </div>
     </div>
   );
 }
+
+
