@@ -9,7 +9,9 @@ import {
   Check, 
   Crosshair, 
   Loader2,
-  AlertTriangle
+  AlertTriangle,
+  Moon,
+  Sun
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage, LANGUAGES, type SupportedLanguage } from '@/contexts/LanguageContext';
@@ -42,6 +44,19 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
   const [langMenuOpen, setLangMenuOpen] = useState(false);
   const [isDetectingGps, setIsDetectingGps] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDark, setIsDark] = useState<boolean>(() => document.documentElement.classList.contains('dark'));
+
+  const toggleTheme = () => {
+    const root = document.documentElement;
+    const next = !root.classList.contains('dark');
+    root.classList.toggle('dark', next);
+    setIsDark(next);
+    try {
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+    } catch {
+      // Storage can be unavailable (private mode); the toggle still works for this session.
+    }
+  };
 
   const locationRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -264,6 +279,18 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
             </div>
           )}
         </div>
+
+        {/* Light / dark mode toggle */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="flex items-center px-2.5 py-1.5 bg-[#F4F9FB] hover:bg-[#DFF3FA] border border-[#D8E5EB] rounded-xl text-[#176B87] transition-all shadow-xs cursor-pointer"
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-pressed={isDark}
+        >
+          {isDark ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+        </button>
 
         {/* Emergency SOS Call (High-Visibility Red Badge) */}
         <a

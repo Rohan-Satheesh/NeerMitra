@@ -5,6 +5,10 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <meta name="theme-color" content="#0B3954" />
+    <script>
+      // Apply the saved theme before first paint to avoid a light flash.
+      try { if (localStorage.getItem('theme') === 'dark') document.documentElement.classList.add('dark'); } catch (e) {}
+    </script>
     <title>ORCA — NeerMitra Marine Intelligence Platform</title>
     <meta name="description" content="ORCA (NeerMitra) — Agentic AI marine intelligence platform for real-time ocean weather, fishing zone advisory, navigation safety, and coastal community support. Multilingual support in 7 Indian languages." />
     <link rel="preconnect" href="https://fonts.googleapis.com">

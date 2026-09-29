@@ -1,13 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { 
-  Home, 
-  CloudSun, 
-  Waves, 
-  Fish, 
-  MessageSquare, 
-  ShieldAlert, 
-  Ship, 
+import {
+  Home,
+  CloudSun,
+  Fish,
+  ShieldAlert,
+  Ship,
   Database,
   Radio,
   ExternalLink
@@ -19,17 +17,15 @@ export default function Sidebar() {
   const { t } = useLanguage();
 
   const primaryItems = [
-    { label: t('navAssistant') || 'Neer Mitra AI', path: '/', icon: MessageSquare },
-    { label: t('navHome') || 'Dashboard', path: '/dashboard', icon: Home },
-    { label: t('navWeather'), path: '/weather', icon: CloudSun },
-    { label: t('navSea'), path: '/sea', icon: Waves },
+    { label: t('navHome') || 'Home', path: '/', icon: Home },
+    { label: `${t('navWeather')} & ${t('navSea')}`, path: '/weather', icon: CloudSun },
     { label: t('navZones'), path: '/zones', icon: Fish },
+    { label: 'Fleet Optimizer', path: '/fleet', icon: Ship },
     { label: t('navSafety'), path: '/safety', icon: ShieldAlert, alert: true },
   ];
 
   const secondaryItems = [
-    { label: 'Fleet Optimizer', path: '/fleet', icon: Ship },
-    { label: 'Data Sources', path: '/data-sources', icon: Database },
+    { label: 'Data Sources', path: '/data-sources', icon: Database, subtitle: 'Satellite & Ocean Data Feeds' },
   ];
 
   return (
@@ -44,7 +40,7 @@ export default function Sidebar() {
         </span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 space-y-1 scrollbar-thin">
+      <nav className="flex-1 flex flex-col overflow-y-auto px-3 space-y-1 scrollbar-thin">
         {primaryItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -78,37 +74,32 @@ export default function Sidebar() {
           );
         })}
 
-        {/* Secondary Operations */}
-        <div className="pt-4 mt-2 border-t border-[#E2EDF2]">
-          <span className="text-[11px] text-[#5B7282] font-bold uppercase tracking-wider px-3 block mb-1">
-            Harbor & Fleet
-          </span>
-          {secondaryItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) => cn(
-                  "group flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-medium transition-all min-h-[40px]",
-                  isActive
-                    ? "bg-[#F4F9FB] text-[#0B3954] font-semibold"
-                    : "text-[#5B7282] hover:bg-[#F4F9FB] hover:text-[#173042]"
-                )}
-              >
-                <div className="flex items-center space-x-3">
-                  <Icon className="w-4 h-4 text-[#5B7282]" />
-                  <span>{item.label}</span>
-                </div>
-              </NavLink>
-            );
-          })}
-        </div>
       </nav>
 
-      {/* Coast Guard Quick Help Footer */}
-      <div className="p-3 border-t border-[#E2EDF2] bg-[#F8FCFD]">
-        <a 
+      {/* Bottom cards: Data Sources + Coast Guard Quick Help (same card style) */}
+      <div className="p-3 border-t border-[#E2EDF2] bg-[#F8FCFD] space-y-2">
+        {secondaryItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              className={({ isActive }) => cn(
+                "flex items-center space-x-2.5 p-2.5 rounded-xl bg-white border transition-all group",
+                isActive ? "border-[#176B87]" : "border-[#D8E5EB] hover:border-[#176B87]"
+              )}
+            >
+              <div className="w-8 h-8 rounded-lg bg-[#DFF3FA] flex items-center justify-center text-[#176B87]">
+                <Icon className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xs font-bold text-[#0B3954]">{item.label}</span>
+                <span className="text-[10px] text-[#5B7282]">{item.subtitle}</span>
+              </div>
+            </NavLink>
+          );
+        })}
+        <a
           href="tel:1554"
           className="flex items-center space-x-2.5 p-2.5 rounded-xl bg-white border border-[#D8E5EB] hover:border-[#176B87] transition-all group"
         >

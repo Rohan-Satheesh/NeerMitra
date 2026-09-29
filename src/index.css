@@ -1,6 +1,14 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+/* TopBar's theme toggle sets/removes a `.dark` class on <html>; this tells
+   Tailwind's `dark:` variant to key off that class instead of the OS-level
+   prefers-color-scheme media query (Tailwind v4's default). Without this,
+   `dark:` utilities never activate and the browser's own forced-dark
+   heuristic repaints the page instead, which is what was producing the
+   muddy, low-contrast look. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-background: #F8FCFD;
   --color-foreground: #173042;
@@ -80,6 +88,15 @@
   html {
     font-size: 16px;
     scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  /* Tells the browser this page has real dark styling of its own, so it
+     stops applying its own forced-dark repaint over our colors — and makes
+     native controls (inputs, selects, checkboxes, scrollbars) use
+     dark-appropriate defaults instead of staying forced-light. */
+  html.dark {
+    color-scheme: dark;
   }
 
   body {
@@ -89,6 +106,11 @@
     line-height: 1.5;
     overflow-x: hidden;
     min-height: 100vh;
+  }
+
+  .dark body {
+    background-color: #0d1420;
+    color: #e8f2fb;
   }
 
   /* High-Contrast Large Touch Target Rules for Wet/Outdoor Hands */
@@ -106,12 +128,65 @@
 }
 
 @layer utilities {
+  /* Abstract sea & shoreline backdrop: soft sky-to-sand gradient with faint wave bands.
+     Low contrast on purpose so white cards and text stay fully legible. */
+  .sea-backdrop {
+    background-color: #E6F3F7;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'%3E%3Cpath d='M0 70 C150 30 300 110 450 70 S750 30 900 70 S1050 110 1200 70 V160 H0Z' fill='%23FFFFFF' fill-opacity='0.35'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'%3E%3Cpath d='M0 90 C200 50 350 130 600 90 S1000 50 1200 90 V160 H0Z' fill='%23176B87' fill-opacity='0.07'/%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'%3E%3Cpath d='M0 110 C250 80 400 140 650 110 S1000 80 1200 110 V160 H0Z' fill='%23E9DCB8' fill-opacity='0.45'/%3E%3C/svg%3E"),
+      linear-gradient(180deg, #EAF6FA 0%, #D9EEF3 45%, #CFE8EE 70%, #EFE7D2 100%);
+    background-repeat: repeat-x, repeat-x, repeat-x, no-repeat;
+    background-size: 1400px 200px, 1600px 180px, 1200px 150px, 100% 100%;
+    background-position: 0 100%, 0 calc(100% - 30px), 0 100%, 0 0;
+    animation: sea-drift 140s linear infinite;
+  }
+
+  /* Wave bands drift sideways at different speeds. Each layer moves by exactly one tile
+     width, so the loop is seamless. */
+  @keyframes sea-drift {
+    from { background-position: 0 100%, 0 calc(100% - 30px), 0 100%, 0 0; }
+    to   { background-position: 1400px 100%, -1600px calc(100% - 30px), 1200px 100%, 0 0; }
+  }
+
+  /* Page entrance: the top-level blocks of each page fade and rise in one after another. */
+  .page-enter > * > * {
+    animation: rise-in 480ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+  .page-enter > * > *:nth-child(2) { animation-delay: 70ms; }
+  .page-enter > * > *:nth-child(3) { animation-delay: 140ms; }
+  .page-enter > * > *:nth-child(4) { animation-delay: 210ms; }
+  .page-enter > * > *:nth-child(n+5) { animation-delay: 280ms; }
+
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* Cards ease up slightly on hover (pointer devices only). */
+  .marine-card {
+    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  }
+  @media (hover: hover) {
+    .marine-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -8px rgba(11, 57, 84, 0.18);
+    }
+  }
+
   /* Sunlight-Readable Cards */
   .marine-card {
     background-color: #FFFFFF;
     border: 1px solid #D8E5EB;
     box-shadow: 0 2px 8px -2px rgba(11, 57, 84, 0.06);
     border-radius: 14px;
+  }
+
+  .dark .marine-card {
+    background-color: #16233b;
+    border-color: #2f4a6e;
+    box-shadow: 0 2px 8px -2px rgba(0, 0, 0, 0.35);
   }
 
   .marine-card-elevated {

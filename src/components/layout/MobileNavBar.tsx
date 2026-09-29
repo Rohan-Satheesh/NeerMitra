@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, CloudSun, Waves, Fish, MessageSquare, ShieldAlert } from 'lucide-react';
+import { Home, CloudSun, Waves, Fish, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -8,9 +8,8 @@ export default function MobileNavBar() {
   const { t } = useLanguage();
 
   const navItems = [
-    { label: t('navAssistant') || 'AI Assistant', path: '/', icon: MessageSquare },
-    { label: t('navHome') || 'Dashboard', path: '/dashboard', icon: Home },
-    { label: t('navWeather'), path: '/weather', icon: CloudSun },
+    { label: t('navHome') || 'Home', path: '/', icon: Home },
+    { label: `${t('navWeather')} & ${t('navSea')}`, path: '/weather', icon: CloudSun },
     { label: t('navZones'), path: '/zones', icon: Fish },
     { label: t('navSafety'), path: '/safety', icon: ShieldAlert, alert: true },
   ];

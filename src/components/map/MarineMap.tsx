@@ -78,6 +78,7 @@ interface MarineMapProps {
   initialPinLabel?: string;
   course?: NavigationCourse | null;
   onClearCourse?: () => void;
+  hideCourseHud?: boolean;
 }
 
 interface AISVessel {
@@ -259,10 +260,11 @@ function CourseCameraController({ course }: { course?: NavigationCourse | null }
 
   useEffect(() => {
     if (course?.origin && course?.destination) {
-      const bounds = L.latLngBounds(
+      const bounds = L.latLngBounds([
         [course.origin.lat, course.origin.lng],
+        ...(course.waypoints || []),
         [course.destination.lat, course.destination.lng]
-      );
+      ]);
       map.fitBounds(bounds, {
         padding: [70, 70],
         maxZoom: 11,
@@ -274,10 +276,11 @@ function CourseCameraController({ course }: { course?: NavigationCourse | null }
   useEffect(() => {
     const handleFitBounds = () => {
       if (course?.origin && course?.destination) {
-        const bounds = L.latLngBounds(
+        const bounds = L.latLngBounds([
           [course.origin.lat, course.origin.lng],
+          ...(course.waypoints || []),
           [course.destination.lat, course.destination.lng]
-        );
+        ]);
         map.fitBounds(bounds, {
           padding: [70, 70],
           maxZoom: 11,
@@ -349,6 +352,7 @@ export default function MarineMap({
   initialPinLabel,
   course = null,
   onClearCourse,
+  hideCourseHud = false,
 }: MarineMapProps) {
   const [selectedPinpoint, setSelectedPinpoint] = useState<{
     lat: number;
@@ -407,7 +411,7 @@ export default function MarineMap({
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
   const [whyModalOpen, setWhyModalOpen] = useState(false);
   const [selectedItemForWhy, setSelectedItemForWhy] = useState<string>('');
-  const [isLayersCollapsed, setIsLayersCollapsed] = useState(false);
+  const [isLayersCollapsed, setIsLayersCollapsed] = useState(true);
   const [vessels, setVessels] = useState<AISVessel[]>([]);
   const [aisConnected, setAisConnected] = useState(false);
 
@@ -875,7 +879,7 @@ export default function MarineMap({
       )}
 
       {/* Floating Active Marine Course HUD */}
-      {course && course.origin && course.destination && (
+      {!hideCourseHud && course && course.origin && course.destination && (
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-[1000] bg-[#091120]/95 backdrop-blur-md border border-cyan-500/50 rounded-xl px-4 py-2.5 shadow-2xl max-w-xl w-[94%] sm:w-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-100">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-lg bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 flex items-center justify-center shrink-0">

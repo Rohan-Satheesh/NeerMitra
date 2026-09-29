@@ -3,23 +3,19 @@ import ReactMarkdown from 'react-markdown';
 import {
   Bot,
   Send,
-  Sparkles,
   Mic,
   MicOff,
   ThumbsUp,
   ThumbsDown,
   ArrowRight,
   Fish,
-  ShieldCheck,
   RefreshCw,
-  MessageSquare,
-  MapPin,
   BookOpen,
   Clock,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useLanguage } from '../../contexts/LanguageContext';
 import { Link } from 'react-router-dom';
 import { getSelectedLocation } from '@/services/liveMarineService';
 import { apiUrl } from '@/services/api';
@@ -49,7 +45,17 @@ interface ChatMessage {
   feedback?: 'up' | 'down' | null;
 }
 
-export function AssistantView() {
+interface AdvisoryChatProps {
+  /** Called whenever the conversation goes from just-the-welcome-message to having a real exchange (and back, on reset), so an embedding page can react — e.g. collapsing a hero banner. */
+  onActivityChange?: (active: boolean) => void;
+}
+
+/**
+ * Embeddable advisory chat block. Grows with the conversation instead of
+ * clipping to a fixed viewport height, so an embedding page (e.g. Home)
+ * scrolls naturally as messages accumulate.
+ */
+export function AdvisoryChat({ onActivityChange }: AdvisoryChatProps = {}) {
   const { language, t } = useLanguage();
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -122,9 +128,20 @@ export function AssistantView() {
     ]);
   }, [language]);
 
-  // Scroll to bottom on new message
+  // Tell the embedding page whether a real exchange has started (vs. just the welcome message)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    onActivityChange?.(messages.length > 1);
+  }, [messages.length, onActivityChange]);
+
+  // Scroll to the latest message once it's rendered. The short delay lets the
+  // embedding page's own collapse animation (e.g. the Home greeting banner)
+  // finish its layout shift first, so the scroll lands in the right place
+  // instead of fighting an in-flight resize.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }, 350);
+    return () => clearTimeout(id);
   }, [messages, isProcessing]);
 
   // Voice recording handlers
@@ -144,7 +161,7 @@ export function AssistantView() {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         stream.getTracks().forEach(track => track.stop());
-        
+
         // Convert to base64
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -325,29 +342,17 @@ export function AssistantView() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto flex flex-col h-[calc(100vh-130px)] md:h-[calc(100vh-110px)]">
-      {/* Header Banner */}
-      <div className="bg-white border border-[#D2E6ED] rounded-xl p-3.5 mb-3 shadow-xs flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-full bg-[#DFF3FA] flex items-center justify-center text-[#0B3954] border border-[#BDE0EE] shadow-xs">
-            <MessageSquare className="w-6 h-6 text-[#176B87]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base md:text-lg font-bold text-[#0B3954]">
-                {language === 'ML' ? 'ORCA മറൈൻ അഡ്വൈസറി' : 'ORCA Marine Advisory'}
-              </h1>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-[#D9F3E6] text-[#16865B]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#16865B] mr-1"></span>
-                {language === 'ML' ? 'തത്സമയം' : 'Live'}
-              </span>
-            </div>
-            <p className="text-xs text-[#52798F]">
-              {language === 'ML'
-                ? 'കടൽ കാലാവസ്ഥ, ചാകര (PFZ), സുരക്ഷാ നിർദ്ദേശങ്ങൾ'
-                : 'Ocean weather, PFZ coordinates, navigation safety & evidence trails'}
-            </p>
-          </div>
+    <div className="flex flex-col">
+      {/* Compact Chat Header — page-level greeting banner above already sets context */}
+      <div className="flex items-center justify-between mb-2 px-1">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-[#12284b] dark:text-[#e8f2fb]">
+            {language === 'ML' ? 'ORCA അഡ്വൈസറി' : 'Advisory Chat'}
+          </span>
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-[#16865B]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#16865B]"></span>
+            {language === 'ML' ? 'തത്സമയം' : 'Live'}
+          </span>
         </div>
 
         <button
@@ -363,33 +368,15 @@ export function AssistantView() {
               risk: 'LOW'
             }]);
           }}
-          className="p-2 text-[#52798F] hover:text-[#0B3954] hover:bg-[#F4FAFC] rounded-lg transition-colors cursor-pointer"
+          className="p-1.5 text-[#12284b]/60 hover:text-[#12284b] hover:bg-[rgba(140,193,233,0.12)] rounded-lg transition-colors cursor-pointer dark:text-[#e8f2fb]/60 dark:hover:text-[#e8f2fb]"
           title={language === 'ML' ? 'പുതുക്കുക' : 'Reset'}
         >
-          <RefreshCw className="w-4 h-4" />
+          <RefreshCw className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Suggested Quick Prompt Chips */}
-      <div className="mb-3 overflow-x-auto pb-1 flex gap-2 no-scrollbar">
-        {SUGGESTED_QUESTIONS.map((q, idx) => {
-          const qText = language === 'ML' ? q.ml : q.en;
-          return (
-            <button
-              key={idx}
-              onClick={() => handleSendMessage(qText)}
-              disabled={isProcessing}
-              className="text-xs font-medium bg-white hover:bg-[#DFF3FA] border border-[#D2E6ED] text-[#173042] px-3 py-2 rounded-full whitespace-nowrap shadow-2xs transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-[#176B87]" />
-              <span>{qText}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Chat Messages Feed */}
-      <div className="flex-1 overflow-y-auto space-y-3.5 p-1 pr-1.5">
+      {/* Chat Messages Feed — grows naturally with the page instead of an internal scroll pane */}
+      <div className="space-y-3.5 py-1">
         {messages.map((msg) => {
           const isUser = msg.sender === 'user';
           return (
@@ -401,23 +388,23 @@ export function AssistantView() {
                 className={cn(
                   "max-w-[88%] md:max-w-[78%] rounded-2xl p-4 shadow-2xs",
                   isUser
-                    ? 'bg-[#176B87] text-white rounded-br-xs'
-                    : 'bg-white text-[#173042] border border-[#D2E6ED] rounded-bl-xs'
+                    ? 'bg-[#12284b] text-white rounded-br-xs dark:bg-[#3d6690]'
+                    : 'bg-[#fff8e7] text-[#12284b] border border-[#8cc1e9] rounded-bl-xs dark:bg-[#16233b] dark:text-[#e8f2fb] dark:border-[#2f4a6e]'
                 )}
               >
                 {/* Sender badge & timestamp */}
                 <div className="flex items-center justify-between gap-3 mb-1.5 text-xs">
-                  <span className={`font-semibold flex items-center gap-1.5 ${isUser ? 'text-[#DFF3FA]' : 'text-[#0B3954]'}`}>
+                  <span className={`font-semibold flex items-center gap-1.5 ${isUser ? 'text-[#fff8e7]' : 'text-[#12284b] dark:text-[#e8f2fb]'}`}>
                     {isUser ? (
                       <span>{language === 'ML' ? 'നിങ്ങൾ' : 'You'}</span>
                     ) : (
                       <>
-                        <Bot className="w-3.5 h-3.5 text-[#176B87]" />
+                        <Bot className="w-3.5 h-3.5 text-[#12284b] dark:text-[#e8f2fb]" />
                         <span>ORCA Advisory</span>
                       </>
                     )}
                   </span>
-                  <span className={`text-[11px] ${isUser ? 'text-[#DFF3FA]/80' : 'text-[#52798F]'}`}>
+                  <span className={`text-[11px] ${isUser ? 'text-[#fff8e7]/80' : 'text-[#12284b]/70 dark:text-[#e8f2fb]/70'}`}>
                     {msg.timestamp}
                   </span>
                 </div>
@@ -428,15 +415,15 @@ export function AssistantView() {
                     {msg.text}
                   </p>
                 ) : (
-                  <div className="text-sm md:text-base leading-relaxed prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:text-[#0B3954] prose-strong:text-[#0B3954]">
+                  <div className="text-sm md:text-base leading-relaxed prose prose-sm max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0 prose-headings:text-[#12284b] prose-strong:text-[#12284b] dark:prose-headings:text-[#e8f2fb] dark:prose-strong:text-[#e8f2fb] dark:text-[#e8f2fb]">
                     <ReactMarkdown>{msg.text}</ReactMarkdown>
                   </div>
                 )}
 
                 {/* Spatial PFZ Card if returned by AI */}
                 {msg.spatialPayload?.nearest_pfz && (
-                  <div className="mt-3 bg-[#F4FAFC] border border-[#BDE0EE] rounded-xl p-3 text-xs text-[#173042]">
-                    <div className="flex items-center justify-between font-bold text-[#0B3954] mb-1">
+                  <div className="mt-3 bg-[rgba(140,193,233,0.12)] border border-[#8cc1e9] rounded-xl p-3 text-xs text-[#12284b] dark:border-[#2f4a6e] dark:text-[#e8f2fb]">
+                    <div className="flex items-center justify-between font-bold text-[#12284b] mb-1 dark:text-[#e8f2fb]">
                       <span className="flex items-center gap-1">
                         <Fish className="w-4 h-4 text-[#16865B]" />
                         {msg.spatialPayload.nearest_pfz.name || 'Optimal Fishing Zone'}
@@ -445,19 +432,19 @@ export function AssistantView() {
                         {msg.spatialPayload.nearest_pfz.yield_confidence || 'HIGH'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#D2E6ED]">
+                    <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-[#8cc1e9] dark:border-[#2f4a6e]">
                       <div>
-                        <span className="text-[#52798F] block">{language === 'ML' ? 'ദൂരം:' : 'Distance:'}</span>
+                        <span className="text-[#12284b]/70 block dark:text-[#e8f2fb]/70">{language === 'ML' ? 'ദൂരം:' : 'Distance:'}</span>
                         <span className="font-semibold">{msg.spatialPayload.nearest_pfz.distance_km} km ({msg.spatialPayload.nearest_pfz.distance_nm} NM)</span>
                       </div>
                       <div>
-                        <span className="text-[#52798F] block">{language === 'ML' ? 'ദിശ:' : 'Bearing:'}</span>
+                        <span className="text-[#12284b]/70 block dark:text-[#e8f2fb]/70">{language === 'ML' ? 'ദിശ:' : 'Bearing:'}</span>
                         <span className="font-semibold">{msg.spatialPayload.nearest_pfz.bearing_cardinal} ({msg.spatialPayload.nearest_pfz.bearing_degrees}°)</span>
                       </div>
                     </div>
                     <Link
                       to="/zones"
-                      className="mt-2.5 inline-flex items-center gap-1 text-[#176B87] font-semibold hover:underline"
+                      className="mt-2.5 inline-flex items-center gap-1 text-[#12284b] font-semibold hover:underline dark:text-[#e8f2fb]"
                     >
                       {language === 'ML' ? 'മാപ്പിൽ കാണുക' : 'View on Map'}
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -472,14 +459,14 @@ export function AssistantView() {
 
                 {/* Risk badge + Feedback for Assistant messages */}
                 {!isUser && (
-                  <div className="mt-2 pt-2 border-t border-[#E8F3F7] flex items-center justify-between">
+                  <div className="mt-2 pt-2 border-t border-[#8cc1e9]/40 dark:border-[#2f4a6e] flex items-center justify-between">
                     {/* Feedback buttons */}
                     <div className="flex items-center gap-1">
                       <button
                         onClick={() => handleFeedback(msg.id, 'up')}
                         className={cn(
                           "p-1.5 rounded-lg transition-colors cursor-pointer",
-                          msg.feedback === 'up' ? 'bg-[#D9F3E6] text-[#16865B]' : 'text-[#A0B2BC] hover:text-[#16865B] hover:bg-[#F4FAFC]'
+                          msg.feedback === 'up' ? 'bg-[#D9F3E6] text-[#16865B]' : 'text-[#A0B2BC] hover:text-[#16865B] hover:bg-[rgba(140,193,233,0.12)]'
                         )}
                         title={language === 'ML' ? 'ശരിയാണ്' : 'Accurate'}
                       >
@@ -522,27 +509,25 @@ export function AssistantView() {
         {/* Processing Indicator */}
         {isProcessing && (
           <div className="flex items-start gap-2">
-            <div className="bg-white border border-[#D2E6ED] rounded-2xl rounded-bl-xs p-3.5 shadow-2xs flex items-center gap-2">
-              <Bot className="w-4 h-4 text-[#176B87] animate-bounce" />
-              <span className="text-xs text-[#52798F] font-medium">
+            <div className="bg-[#fff8e7] border border-[#8cc1e9] rounded-2xl rounded-bl-xs p-3.5 shadow-2xs flex items-center gap-2 dark:bg-[#16233b] dark:border-[#2f4a6e]">
+              <Bot className="w-4 h-4 text-[#12284b] animate-bounce dark:text-[#e8f2fb]" />
+              <span className="text-xs text-[#12284b]/70 font-medium dark:text-[#e8f2fb]/70">
                 {language === 'ML'
                   ? 'കടൽ കാലാവസ്ഥാ വിവരങ്ങൾ വിശകലനം ചെയ്യുന്നു...'
                   : 'Analyzing live ocean telemetry & PFZ models...'}
               </span>
               <div className="flex gap-1">
-                <span className="w-1.5 h-1.5 bg-[#176B87] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-1.5 h-1.5 bg-[#176B87] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                <span className="w-1.5 h-1.5 bg-[#176B87] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-[#12284b] rounded-full animate-bounce dark:bg-[#e8f2fb]" style={{ animationDelay: '0ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-[#12284b] rounded-full animate-bounce dark:bg-[#e8f2fb]" style={{ animationDelay: '150ms' }}></span>
+                <span className="w-1.5 h-1.5 bg-[#12284b] rounded-full animate-bounce dark:bg-[#e8f2fb]" style={{ animationDelay: '300ms' }}></span>
               </div>
             </div>
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Multi-Modal Input Bar with Voice (PRD R1-C04) */}
-      <div className="mt-2 bg-white border border-[#D2E6ED] rounded-2xl p-2.5 shadow-md">
+      <div className="mt-2 bg-[#fff8e7] rounded-[26px] p-2.5 shadow-md dark:bg-[#16233b]">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -559,7 +544,7 @@ export function AssistantView() {
               "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs",
               isRecording
                 ? "bg-[#C0392B] hover:bg-[#A93226] text-white animate-pulse"
-                : "bg-[#F4F9FB] hover:bg-[#DFF3FA] text-[#176B87] border border-[#D2E6ED]"
+                : "bg-[rgba(140,193,233,0.12)] hover:bg-[rgba(140,193,233,0.19)] text-[#12284b] border border-[#8cc1e9] dark:text-[#e8f2fb] dark:border-[#2f4a6e]"
             )}
             title={isRecording ? (language === 'ML' ? 'നിർത്തുക' : 'Stop recording') : (language === 'ML' ? 'ശബ്ദം ഉപയോഗിക്കുക' : 'Voice input')}
           >
@@ -582,31 +567,40 @@ export function AssistantView() {
               language === 'ML' ? 'ചോദ്യം ഇവിടെ ടൈപ്പ് ചെയ്യുക...' : 'Type your question here...'
             }
             disabled={isRecording}
-            className="flex-1 h-12 px-4 bg-[#F8FCFD] border border-[#D2E6ED] rounded-xl text-[#173042] placeholder-[#52798F] text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#176B87] focus:bg-white transition-all disabled:opacity-50"
+            className="flex-1 h-12 px-5 bg-[rgba(140,193,233,0.19)] border-2 border-[#8cc1e9] rounded-full text-[#12284b] placeholder-[#8cc1e9] placeholder:font-semibold text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#12284b] focus:bg-[#fff8e7] transition-all disabled:opacity-50 dark:text-[#e8f2fb] dark:border-[#3d6690] dark:focus:ring-[#8cc1e9] dark:focus:bg-[#0d1420]"
           />
 
           {/* Send Button */}
           <button
             type="submit"
             disabled={!inputText.trim() || isProcessing || isRecording}
-            className="h-12 px-5 rounded-xl bg-[#176B87] hover:bg-[#0B3954] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-xs transition-colors cursor-pointer"
+            className="h-12 px-5 rounded-full bg-[#12284b] hover:bg-[#0d1f3a] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-xs transition-colors cursor-pointer dark:bg-[#3d6690] dark:hover:bg-[#4a7ba8]"
           >
             <span>{language === 'ML' ? 'അയക്കുക' : 'Send'}</span>
             <Send className="w-4 h-4" />
           </button>
         </form>
-
-        <div className="flex items-center justify-between px-2 pt-2 text-[11px] text-[#52798F]">
-          <span className="flex items-center gap-1">
-            <Mic className="w-3 h-3" />
-            {language === 'ML' ? 'ശബ്ദത്തിലും ടൈപ്പിലും ചോദിക്കാം' : 'Voice & text input in all languages'}
-          </span>
-          <span className="flex items-center gap-1 font-semibold text-[#16865B]">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            INCOIS · Open-Meteo · ORCA
-          </span>
-        </div>
       </div>
+
+      {/* Suggested Quick Prompts — sit below the chat box */}
+      <div className="mt-2 overflow-x-auto pb-1 flex gap-2 no-scrollbar">
+        {SUGGESTED_QUESTIONS.map((q, idx) => {
+          const qText = language === 'ML' ? q.ml : q.en;
+          return (
+            <button
+              key={idx}
+              onClick={() => handleSendMessage(qText)}
+              disabled={isProcessing}
+              className="text-xs font-medium bg-[#fff8e7] hover:bg-[rgba(140,193,233,0.19)] border border-[#8cc1e9] text-[#12284b] px-3 py-1.5 rounded-full whitespace-nowrap shadow-2xs transition-colors shrink-0 cursor-pointer disabled:opacity-50 dark:bg-[#16233b] dark:text-[#e8f2fb] dark:border-[#2f4a6e] dark:hover:bg-[#1e3252]"
+            >
+              {qText}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Scroll target — the very bottom of the chat box, so auto-scroll goes all the way down past the suggested prompts */}
+      <div ref={messagesEndRef} />
     </div>
   );
 }
@@ -624,7 +618,7 @@ function EvidenceTrailBlock({ evidence, language, agentsInvoked }: {
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="flex items-center gap-1.5 text-[11px] text-[#52798F] hover:text-[#0B3954] font-medium transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 text-[11px] text-[#12284b]/70 hover:text-[#12284b] font-medium transition-colors cursor-pointer dark:text-[#e8f2fb]/70 dark:hover:text-[#e8f2fb]"
       >
         <BookOpen className="w-3 h-3" />
         <span>{language === 'ML' ? 'ഡാറ്റ ഉറവിടങ്ങൾ & തെളിവുകൾ' : 'Data Sources & Evidence'}</span>
@@ -632,17 +626,17 @@ function EvidenceTrailBlock({ evidence, language, agentsInvoked }: {
       </button>
 
       {expanded && (
-        <div className="mt-1.5 p-2.5 bg-[#F4FAFC] border border-[#D2E6ED] rounded-lg text-[11px] space-y-1.5 animate-in fade-in duration-200">
+        <div className="mt-1.5 p-2.5 bg-[rgba(140,193,233,0.12)] border border-[#8cc1e9] rounded-lg text-[11px] space-y-1.5 animate-in fade-in duration-200 dark:border-[#2f4a6e]">
           {/* Sources consulted */}
           <div>
-            <span className="font-bold text-[#0B3954]">
+            <span className="font-bold text-[#12284b] dark:text-[#e8f2fb]">
               {language === 'ML' ? 'ഉറവിടങ്ങൾ:' : 'Sources Consulted:'}
             </span>
             <ul className="mt-0.5 space-y-0.5">
               {evidence.sources.map((src, i) => (
-                <li key={i} className="flex items-center gap-1.5 text-[#52798F]">
-                  <span className="w-1 h-1 rounded-full bg-[#176B87] shrink-0" />
-                  <span className="font-medium text-[#173042]">{src.name}</span>
+                <li key={i} className="flex items-center gap-1.5 text-[#12284b]/70 dark:text-[#e8f2fb]/70">
+                  <span className="w-1 h-1 rounded-full bg-[#12284b] shrink-0 dark:bg-[#e8f2fb]" />
+                  <span className="font-medium text-[#12284b] dark:text-[#e8f2fb]">{src.name}</span>
                   <span className="text-[10px]">({src.type})</span>
                   <span className="text-[10px] flex items-center gap-0.5">
                     <Clock className="w-2.5 h-2.5" />
@@ -656,16 +650,16 @@ function EvidenceTrailBlock({ evidence, language, agentsInvoked }: {
           {/* Threshold rationale */}
           {evidence.threshold_rationale && (
             <div>
-              <span className="font-bold text-[#0B3954]">
+              <span className="font-bold text-[#12284b] dark:text-[#e8f2fb]">
                 {language === 'ML' ? 'നിർണ്ണായക ഘടകങ്ങൾ:' : 'Key Factors:'}
               </span>
-              <p className="text-[#52798F] mt-0.5">{evidence.threshold_rationale}</p>
+              <p className="text-[#12284b]/70 mt-0.5 dark:text-[#e8f2fb]/70">{evidence.threshold_rationale}</p>
             </div>
           )}
 
           {/* Confidence */}
           <div className="flex items-center gap-2">
-            <span className="font-bold text-[#0B3954]">
+            <span className="font-bold text-[#12284b] dark:text-[#e8f2fb]">
               {language === 'ML' ? 'വിശ്വാസ്യത:' : 'Confidence:'}
             </span>
             <span className={cn(
@@ -681,11 +675,11 @@ function EvidenceTrailBlock({ evidence, language, agentsInvoked }: {
           {/* Agents invoked */}
           {agentsInvoked && agentsInvoked.length > 0 && (
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-bold text-[#0B3954]">
+              <span className="font-bold text-[#12284b] dark:text-[#e8f2fb]">
                 {language === 'ML' ? 'ഏജന്റുകൾ:' : 'Agents:'}
               </span>
               {agentsInvoked.map((agent, i) => (
-                <span key={i} className="px-1.5 py-0.5 rounded bg-[#DFF3FA] text-[#176B87] font-medium">
+                <span key={i} className="px-1.5 py-0.5 rounded bg-[rgba(140,193,233,0.19)] text-[#12284b] font-medium dark:text-[#e8f2fb]">
                   {agent}
                 </span>
               ))}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileNavBar from './MobileNavBar';
@@ -52,10 +52,11 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, Error
 
 export default function AppShell() {
   const [isScanning, setIsScanning] = useState(false);
+  const { pathname } = useLocation();
 
   return (
     <LanguageProvider>
-      <div className="min-h-screen flex flex-col bg-[#F8FCFD] text-[#173042] font-sans antialiased selection:bg-[#176B87]/20 selection:text-[#0B3954]">
+      <div className="h-screen flex flex-col bg-[#F8FCFD] text-[#173042] font-sans antialiased selection:bg-[#176B87]/20 selection:text-[#0B3954]">
         
         {/* Top App Header */}
         <TopBar />
@@ -65,9 +66,11 @@ export default function AppShell() {
           <Sidebar />
 
           {/* Main Content Viewport */}
-          <main className="flex-1 overflow-y-auto relative pb-20 md:pb-6">
+          <main className="flex-1 min-h-0 overflow-y-auto relative pb-20 md:pb-6 sea-backdrop">
             <ErrorBoundary>
-              <Outlet context={{ isScanning, setIsScanning }} />
+              <div key={pathname} className="page-enter h-full">
+                <Outlet context={{ isScanning, setIsScanning }} />
+              </div>
             </ErrorBoundary>
           </main>
         </div>

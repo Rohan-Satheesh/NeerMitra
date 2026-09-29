@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   Fuel, 
   ShieldCheck, 
@@ -51,10 +51,79 @@ const VESSEL_TYPES: VesselType[] = [
   { id: 'carrier', name: 'Coastal Fish Transporter / Carrier', nameMl: 'ഫിഷ് കാരിയർ ബോട്ട്', speedKnots: 12.5, fuelRate: 4.2 },
 ];
 
+interface VoyageInputs {
+  originId: string;
+  destId: string;
+  vesselId: string;
+  avoidSwell: boolean;
+  stayEEZ: boolean;
+  currentAssistance: boolean;
+}
+
+const DIESEL_INR_PER_LITER = 94.0;
+const CO2_KG_PER_LITER = 2.68;
+const CURRENT_BOOST_KN = 1.2;
+const NUM_WAYPOINTS = 20;
+
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+// Local flat-earth offset in nautical miles (east, north) from a to b.
+function offsetNM(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const north = (b.lat - a.lat) * 60;
+  const east = (b.lng - a.lng) * 60 * Math.cos(toRad((a.lat + b.lat) / 2));
+  return { east, north };
+}
+
+function compassLabel(bearing: number, ml: boolean) {
+  const en = ['North', 'North-East', 'East', 'South-East', 'South', 'South-West', 'West', 'North-West'];
+  const mlNames = ['വടക്ക്', 'വടക്കുകിഴക്ക്', 'കിഴക്ക്', 'തെക്കുകിഴക്ക്', 'തെക്ക്', 'തെക്കുപടിഞ്ഞാറ്', 'പടിഞ്ഞാറ്', 'വടക്കുപടിഞ്ഞാറ്'];
+  const idx = Math.round(bearing / 45) % 8;
+  return `${(ml ? mlNames : en)[idx]} (${Math.round(bearing)}°)`;
+}
+
+// Builds a bowed offshore route and measures the real polyline length.
+function buildRoute(origin: PortDestination, dest: PortDestination, avoidSwell: boolean, stayEEZ: boolean) {
+  const { east, north } = offsetNM(origin, dest);
+  const straightNM = Math.hypot(east, north);
+  const bearing = (Math.atan2(east, north) * 180 / Math.PI + 360) % 360;
+
+  // Unit vector along the track and the perpendicular pointing offshore (west).
+  const ux = straightNM ? east / straightNM : 0;
+  const uy = straightNM ? north / straightNM : 1;
+  let px = -uy;
+  let py = ux;
+  if (px > 0 || (Math.abs(px) < 1e-9 && py < 0)) { px = -px; py = -py; }
+
+  const amplitude = (avoidSwell ? 0.08 : 0.02) + (stayEEZ ? 0.02 : 0);
+  const waypoints: [number, number][] = [];
+  for (let i = 1; i <= NUM_WAYPOINTS; i++) {
+    const t = i / (NUM_WAYPOINTS + 1);
+    const bow = 4 * t * (1 - t) * amplitude * straightNM; // NM off the straight line
+    const midLat = origin.lat + (dest.lat - origin.lat) * t;
+    const lat = midLat + (py * bow) / 60;
+    const lng = origin.lng + (dest.lng - origin.lng) * t + (px * bow) / (60 * Math.cos(toRad(midLat)));
+    waypoints.push([lat, lng]);
+  }
+
+  const path = [
+    { lat: origin.lat, lng: origin.lng },
+    ...waypoints.map(([lat, lng]) => ({ lat, lng })),
+    { lat: dest.lat, lng: dest.lng },
+  ];
+  let routeNM = 0;
+  for (let i = 1; i < path.length; i++) {
+    const o = offsetNM(path[i - 1], path[i]);
+    routeNM += Math.hypot(o.east, o.north);
+  }
+
+  return { straightNM, routeNM, bearing, waypoints };
+}
+
 export default function FleetOptimizer() {
   const { language } = useLanguage();
+  const isML = language === 'ML';
 
-  // Selection states
+  // Live form inputs
   const [selectedOrigin, setSelectedOrigin] = useState<string>('kochi');
   const [selectedDest, setSelectedDest] = useState<string>('zone-k04');
   const [selectedVessel, setSelectedVessel] = useState<string>('trawler');
@@ -62,50 +131,68 @@ export default function FleetOptimizer() {
   const [stayEEZ, setStayEEZ] = useState<boolean>(true);
   const [currentAssistance, setCurrentAssistance] = useState<boolean>(true);
 
-  // Calculation & simulation state
+  // Simulation state. `plan` is the input snapshot taken when Run is clicked, so
+  // the plotted route and results only change on an explicit re-run.
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationStage, setOptimizationStage] = useState(0);
-  const [resultsReady, setResultsReady] = useState(false); // Map will show just ports initially
+  const [plan, setPlan] = useState<VoyageInputs | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+
+  const liveInputs: VoyageInputs = {
+    originId: selectedOrigin,
+    destId: selectedDest,
+    vesselId: selectedVessel,
+    avoidSwell,
+    stayEEZ,
+    currentAssistance,
+  };
+  const planStale = !!plan && (Object.keys(liveInputs) as (keyof VoyageInputs)[]).some(k => liveInputs[k] !== plan[k]);
 
   const originPort = PORTS.find(p => p.id === selectedOrigin) || PORTS[0];
   const destZone = TARGET_ZONES.find(z => z.id === selectedDest) || TARGET_ZONES[0];
-  const vessel = VESSEL_TYPES.find(v => v.id === selectedVessel) || VESSEL_TYPES[0];
 
-  // Geodesic distance calculation (approximate nautical miles)
-  const distanceNM = useMemo(() => {
-    const dLat = (destZone.lat - originPort.lat) * 60;
-    const avgLatRad = ((destZone.lat + originPort.lat) / 2) * (Math.PI / 180);
-    const dLng = (destZone.lng - originPort.lng) * 60 * Math.cos(avgLatRad);
-    const straightDist = Math.sqrt(dLat * dLat + dLng * dLng);
-    // Route detour factor to navigate safely around sandbars/swells
-    const detourFactor = avoidSwell ? 1.14 : 1.05;
-    return Math.max(12, Math.round(straightDist * detourFactor * 10) / 10);
-  }, [originPort, destZone, avoidSwell]);
+  // Live preview distance for the current inputs (same geometry as the plotted route).
+  const preview = useMemo(
+    () => buildRoute(originPort, destZone, avoidSwell, stayEEZ),
+    [originPort, destZone, avoidSwell, stayEEZ]
+  );
+  const distanceNM = Math.round(preview.routeNM * 10) / 10;
+  const distanceKm = Math.round(preview.routeNM * 1.852 * 10) / 10;
 
-  const distanceKm = Math.round(distanceNM * 1.852 * 10) / 10;
+  // Full evaluation of the snapshot taken at Run time.
+  const result = useMemo(() => {
+    if (!plan) return null;
+    const origin = PORTS.find(p => p.id === plan.originId) || PORTS[0];
+    const dest = TARGET_ZONES.find(z => z.id === plan.destId) || TARGET_ZONES[0];
+    const vsl = VESSEL_TYPES.find(v => v.id === plan.vesselId) || VESSEL_TYPES[0];
+    const route = buildRoute(origin, dest, plan.avoidSwell, plan.stayEEZ);
 
-  // Single active routing strategy for data display
-  const activeStrategy = useMemo(() => {
-    const effectiveDist = stayEEZ ? distanceNM * 1.05 : distanceNM;
-    const currentSpeedBoost = currentAssistance ? 1.2 : 0;
-    const baseFuelLiters = Math.round(effectiveDist * vessel.fuelRate * 2); // Round trip
-    const dieselCostPerLiter = 94.0; // INR
+    const boost = plan.currentAssistance ? CURRENT_BOOST_KN : 0;
+    const groundSpeed = vsl.speedKnots + boost;
+    // Constant engine burn per hour: fuel per NM scales with speed over ground.
+    const fuelPerNM = vsl.fuelRate * (vsl.speedKnots / groundSpeed);
+    const fuelLiters = Math.round(route.routeNM * fuelPerNM * 2); // round trip
+    // Baseline: straight track, no current assistance.
+    const fuelBaseline = Math.round(route.straightNM * vsl.fuelRate * 2);
+    const savedLiters = fuelBaseline - fuelLiters;
 
     return {
-      id: 'strat-balanced',
-      name: language === 'ML' ? 'സുരക്ഷിത പാത (ശുപാർശ ചെയ്യുന്നത്)' : 'Safe Weather Corridor (Recommended)',
-      tag: language === 'ML' ? 'മികച്ച അനുപാതം' : 'Best Overall',
-      speed: Math.round((vessel.speedKnots + currentSpeedBoost) * 10) / 10,
-      fuelLiters: Math.round(baseFuelLiters * 0.78),
-      fuelBaseline: baseFuelLiters,
-      savingsPercent: 22,
-      savingsInr: Math.round((baseFuelLiters * 0.22) * dieselCostPerLiter),
-      timeHours: Math.round((effectiveDist / (vessel.speedKnots + currentSpeedBoost)) * 10) / 10,
-      co2ReductionKg: Math.round((baseFuelLiters * 0.22) * 2.68),
-      maxSwellMeters: 1.3,
-      confidenceScore: 94,
+      origin, dest, route,
+      speed: Math.round(groundSpeed * 10) / 10,
+      fuelLiters,
+      fuelBaseline,
+      savingsPercent: fuelBaseline ? Math.round((savedLiters / fuelBaseline) * 1000) / 10 : 0,
+      savingsInr: Math.round(savedLiters * DIESEL_INR_PER_LITER),
+      co2ReductionKg: Math.round(savedLiters * CO2_KG_PER_LITER),
+      timeHours: Math.round((route.routeNM / groundSpeed) * 10) / 10,
+      // Planning estimates, not live INCOIS data.
+      maxSwellMeters: plan.avoidSwell ? 1.3 : 2.4,
+      confidenceScore: plan.avoidSwell ? 94 : 81,
+      tag: isML ? 'സുരക്ഷിത പാത' : 'Safe Weather Corridor',
     };
-  }, [distanceNM, vessel, language, stayEEZ, currentAssistance]);
+  }, [plan, isML]);
 
   const stages = [
     "ANALYZING COASTAL BATHYMETRY & REEF CONSTRAINTS",
@@ -116,69 +203,46 @@ export default function FleetOptimizer() {
   ];
 
   const handleRunOptimizer = () => {
+    if (isOptimizing) return;
+    if (timerRef.current) clearInterval(timerRef.current);
+    const snapshot = { ...liveInputs };
     setIsOptimizing(true);
-    setResultsReady(false);
+    setPlan(null);
     setOptimizationStage(0);
 
-    const stageTimer = setInterval(() => {
-      setOptimizationStage(prev => {
-        if (prev >= stages.length - 1) {
-          clearInterval(stageTimer);
-          setIsOptimizing(false);
-          setResultsReady(true);
-          return prev;
-        }
-        return prev + 1;
-      });
+    let stage = 0;
+    timerRef.current = setInterval(() => {
+      stage += 1;
+      if (stage >= stages.length - 1) {
+        if (timerRef.current) clearInterval(timerRef.current);
+        timerRef.current = null;
+        setOptimizationStage(stages.length - 1);
+        setIsOptimizing(false);
+        setPlan(snapshot);
+      } else {
+        setOptimizationStage(stage);
+      }
     }, 450);
   };
 
   const computedCourse = useMemo<NavigationCourse | null>(() => {
-    if (!resultsReady || isOptimizing) return null;
-
-    const numWaypoints = 20;
-    const wps: [number, number][] = [];
-    
-    const dx = destZone.lng - originPort.lng;
-    const dy = destZone.lat - originPort.lat;
-    
-    // Perpendicular vector pointing generally offshore (Westward)
-    const perpLng = -dy;
-    const perpLat = dx;
-    
-    // Bow amplitude as a fraction of the total path length
-    const bowAmplitude = avoidSwell ? 0.25 : 0.02;
-    
-    for (let i = 1; i <= numWaypoints; i++) {
-      const t = i / (numWaypoints + 1);
-      const baseLat = originPort.lat + dy * t;
-      const baseLng = originPort.lng + dx * t;
-      
-      // Parabolic curve: 4 * t * (1 - t) peaks at 1.0 when t = 0.5
-      const curveScale = 4 * t * (1 - t) * bowAmplitude;
-      
-      wps.push([
-        baseLat + perpLat * curveScale, 
-        baseLng + perpLng * curveScale
-      ]);
-    }
-
+    if (!result) return null;
     return {
-      id: `course-${activeStrategy.id}`,
-      origin: { lat: originPort.lat, lng: originPort.lng, name: originPort.name },
-      destination: { lat: destZone.lat, lng: destZone.lng, name: destZone.name, species: 'High-Yield Pelagic' },
-      distance: `${distanceNM} NM`,
-      bearing: 'North-West Track',
-      fuelEstimate: `${activeStrategy.fuelLiters} L (${activeStrategy.tag})`,
-      waypoints: wps
+      id: 'course-strat-balanced',
+      origin: { lat: result.origin.lat, lng: result.origin.lng, name: result.origin.name },
+      destination: { lat: result.dest.lat, lng: result.dest.lng, name: result.dest.name, species: 'High-Yield Pelagic' },
+      distance: `${Math.round(result.route.routeNM * 10) / 10} NM`,
+      bearing: compassLabel(result.route.bearing, false),
+      fuelEstimate: `${result.fuelLiters} L (${result.tag})`,
+      waypoints: result.route.waypoints,
     };
-  }, [resultsReady, isOptimizing, originPort, destZone, avoidSwell, activeStrategy, distanceNM]);
+  }, [result]);
 
   return (
-    <div className="max-w-7xl mx-auto px-3.5 sm:px-6 py-5 space-y-5 font-sans select-none">
-      
+    <div className="max-w-7xl mx-auto w-full px-3.5 sm:px-6 py-3 flex flex-col gap-3 font-sans select-none lg:h-full">
+
       {/* Top Header Card */}
-      <div className="bg-white border border-[#D8E5EB] rounded-2xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white border border-[#D8E5EB] rounded-2xl px-4 py-3 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
         <div>
           <div className="flex items-center space-x-2 mb-1">
             <span className="text-xs font-bold text-[#176B87] uppercase tracking-wider flex items-center gap-1.5">
@@ -186,11 +250,11 @@ export default function FleetOptimizer() {
               {language === 'ML' ? 'തുറമുഖ & ഇന്ധന ഒപ്റ്റിമൈസർ' : 'Harbor & Fleet Energy Routing'}
             </span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-[#0B3954] flex items-center gap-2.5">
-            <Ship className="w-6 h-6 text-[#176B87]" />
+          <h1 className="text-lg sm:text-xl font-black text-[#0B3954] flex items-center gap-2.5">
+            <Ship className="w-5 h-5 text-[#176B87]" />
             <span>{language === 'ML' ? 'ഫ്ലീറ്റ് വെതർ റൂട്ട് ഒപ്റ്റിമൈസർ' : 'Fleet Route & Fuel Optimizer'}</span>
           </h1>
-          <p className="text-xs sm:text-sm text-[#5B7282] mt-1 max-w-2xl leading-relaxed">
+          <p className="hidden xl:block text-xs text-[#5B7282] mt-0.5 max-w-2xl leading-relaxed">
             {language === 'ML'
               ? 'ഉയർന്ന തിരമാലകളും പ്രതികൂല ഒഴുക്കുകളും ഒഴിവാക്കി കുറഞ്ഞ ഇന്ധനച്ചെലവിൽ ചാകര മേഖലകളിലേക്ക് എത്തിച്ചേരാനുള്ള സമുദ്ര നാവിഗേഷൻ.'
               : 'Multi-objective marine routing avoiding rough swells, optimizing current assistance, and cutting round-trip diesel expenses.'}
@@ -203,7 +267,9 @@ export default function FleetOptimizer() {
             <Fuel className="w-4 h-4 text-[#16865B]" />
             <div>
               <span className="text-[10px] text-[#5B7282] block font-bold uppercase">Avg. Diesel Saved</span>
-              <span className="text-xs font-black text-[#16865B]">22% to 29% per trip</span>
+              <span className="text-xs font-black text-[#16865B]">
+                {result ? `${result.savingsPercent}% vs straight track` : 'Run optimizer to compute'}
+              </span>
             </div>
           </div>
           <div className="flex items-center space-x-2 bg-[#F8FCFD] border border-[#D8E5EB] px-3 py-1.5 rounded-xl shadow-2xs">
@@ -217,11 +283,13 @@ export default function FleetOptimizer() {
       </div>
 
       {/* Main Grid: Parameters on Left + Interactive Chart & Results on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        
-        {/* Left Column: Voyage Parameters (4 cols on lg) */}
-        <div className="lg:col-span-4 space-y-4">
-          <div className="bg-white border border-[#D8E5EB] rounded-2xl p-5 shadow-xs space-y-4">
+      <div className="flex flex-col lg:flex-row gap-3 flex-1 min-h-0">
+
+        {/* Left Column: Voyage Parameters — stretches to match the map column's height */}
+        <div className="lg:w-[340px] lg:shrink-0 flex flex-col min-h-0">
+          <div className="bg-white border border-[#D8E5EB] rounded-2xl shadow-xs flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Scrollable form fields — the action button below stays fixed and never scrolls with these */}
+          <div className="p-4 space-y-3 flex-1 overflow-y-auto min-h-0">
             <div className="flex items-center justify-between border-b border-[#E2EDF2] pb-3">
               <div className="flex items-center space-x-2">
                 <Sliders className="w-4 h-4 text-[#176B87]" />
@@ -330,12 +398,14 @@ export default function FleetOptimizer() {
                 />
               </label>
             </div>
+          </div>
 
-            {/* Run Action Button */}
+          {/* Run Action Button — pinned footer, stays visible above the scrolling fields regardless of scroll position */}
+          <div className="p-4 pt-3 border-t border-[#E2EDF2] shrink-0 bg-white">
             <button
               onClick={handleRunOptimizer}
               disabled={isOptimizing}
-              className="w-full bg-[#176B87] hover:bg-[#0B3954] text-white font-bold text-xs py-3.5 rounded-xl flex items-center justify-center space-x-2 shadow-xs hover:shadow-sm transition-all disabled:opacity-50 cursor-pointer mt-2"
+              className="w-full bg-[#176B87] hover:bg-[#0B3954] text-white font-bold text-xs py-3.5 rounded-xl flex items-center justify-center space-x-2 shadow-xs hover:shadow-sm transition-all disabled:opacity-50 cursor-pointer"
             >
               {isOptimizing ? (
                 <>
@@ -350,14 +420,15 @@ export default function FleetOptimizer() {
               )}
             </button>
           </div>
+          </div>
         </div>
 
         {/* Right Column: Nautical Chart Vector Map */}
-        <div className="lg:col-span-8 space-y-4">
-          
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col gap-3">
+
           {/* Animated Nautical Chart Visualization */}
-          <div className="bg-white border border-[#D8E5EB] rounded-2xl p-5 shadow-xs relative overflow-hidden h-full flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#E2EDF2] pb-3 mb-4">
+          <div className="bg-white border border-[#D8E5EB] rounded-2xl p-3 shadow-xs relative overflow-hidden flex-1 min-h-[300px] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#E2EDF2] pb-2 mb-3 shrink-0">
               <div className="flex items-center space-x-2">
                 <Navigation className="w-4 h-4 text-[#176B87]" />
                 <h3 className="text-sm font-bold text-[#0B3954]">
@@ -368,20 +439,27 @@ export default function FleetOptimizer() {
                 <span className="font-bold text-[#0B3954] flex items-center gap-1">
                   <span className="text-[#5B7282] font-normal">Distance:</span> {distanceNM} NM ({distanceKm} km)
                 </span>
-                <span className="text-[#16865B] bg-[#E8F7F0] border border-[#A6E2C6] px-2.5 py-0.5 rounded-md font-bold text-[11px]">
-                  Safe Corridor Active
-                </span>
+                {planStale ? (
+                  <span className="text-[#9A6A00] bg-[#FFF6DD] border border-[#F0D58A] px-2.5 py-0.5 rounded-md font-bold text-[11px]">
+                    {isML ? 'ഇൻപുട്ട് മാറി — വീണ്ടും കണക്കാക്കുക' : 'Inputs changed — re-run'}
+                  </span>
+                ) : result ? (
+                  <span className="text-[#16865B] bg-[#E8F7F0] border border-[#A6E2C6] px-2.5 py-0.5 rounded-md font-bold text-[11px]">
+                    Safe Corridor Active
+                  </span>
+                ) : null}
               </div>
             </div>
 
             {/* Google Maps style interactive map */}
-            <div className="w-full flex-grow min-h-[500px] rounded-xl relative border border-[#CDE3ED] overflow-hidden shadow-inner z-0">
+            <div className="w-full flex-1 min-h-0 rounded-xl relative border border-[#CDE3ED] overflow-hidden shadow-inner z-0">
               <MarineMap
                 center={[(originPort.lat + destZone.lat) / 2, (originPort.lng + destZone.lng) / 2]}
-                zoom={7}
+                zoom={preview.routeNM > 200 ? 6 : 7}
                 showSST={true}
                 showVessels={true}
                 course={computedCourse}
+                hideCourseHud
                 initialPinLabel={language === 'ML' ? 'റൂട്ട് മാപ്പ്' : 'Fleet Operations Map'}
               />
 
@@ -402,6 +480,34 @@ export default function FleetOptimizer() {
               )}
             </div>
           </div>
+
+          {/* Results Panel */}
+          {result && (
+            <div className="bg-white border border-[#D8E5EB] rounded-2xl p-3 shadow-xs shrink-0">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-bold text-[#0B3954]">{result.tag}</h3>
+                <span className="text-[11px] text-[#5B7282]">
+                  {compassLabel(result.route.bearing, isML)} · {Math.round(result.route.routeNM * 10) / 10} NM
+                </span>
+              </div>
+              <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+                {[
+                  { label: isML ? 'ഇന്ധനം (യാത്ര ഇരുവശം)' : 'Fuel (round trip)', value: `${result.fuelLiters} L`, sub: `${isML ? 'നേർരേഖ' : 'Straight baseline'} ${result.fuelBaseline} L` },
+                  { label: isML ? 'ലാഭം' : 'Saving', value: `${result.savingsPercent}%`, sub: `₹${result.savingsInr.toLocaleString('en-IN')}` },
+                  { label: isML ? 'ഒരു വശത്തെ സമയം' : 'One-way time', value: `${result.timeHours} h`, sub: `${result.speed} kn SOG` },
+                  { label: 'CO₂', value: `${result.co2ReductionKg} kg`, sub: isML ? 'കുറവ്' : 'vs baseline' },
+                  { label: isML ? 'പരമാവധി തിര' : 'Max swell', value: `${result.maxSwellMeters} m`, sub: isML ? 'കണക്കാക്കിയത്' : 'planning estimate' },
+                  { label: isML ? 'വിശ്വാസ്യത' : 'Confidence', value: `${result.confidenceScore}%`, sub: isML ? 'കണക്കാക്കിയത്' : 'planning estimate' },
+                ].map(m => (
+                  <div key={m.label} className="bg-[#F8FCFD] border border-[#E2EDF2] rounded-xl px-2.5 py-2">
+                    <span className="text-[10px] text-[#5B7282] block font-bold uppercase truncate">{m.label}</span>
+                    <span className="text-sm font-black text-[#0B3954] block">{m.value}</span>
+                    <span className="text-[10px] text-[#5B7282]">{m.sub}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

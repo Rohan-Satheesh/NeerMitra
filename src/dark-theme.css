@@ -1,0 +1,163 @@
+/* Dark theme. Toggled by the `dark` class on <html> (see TopBar).
+   The app hard-codes its light palette as Tailwind utilities, so this file remaps those
+   exact colours instead of rewriting every component. Generated section first, then
+   hand-written component overrides. */
+
+.dark {
+  color-scheme: dark;
+  --background: #0B1622;
+  --foreground: #D3E2EA;
+  --card: #111F2F;
+  --card-foreground: #D3E2EA;
+  --popover: #111F2F;
+  --popover-foreground: #D3E2EA;
+  --muted: #15283B;
+  --muted-foreground: #9DB4C1;
+  --border: #24394D;
+  --input: #111F2F;
+}
+
+/* ---- Palette remap (generated) ---- */
+.dark .bg-white { background-color: #111F2F; }
+.dark .hover\:bg-white:hover { background-color: #111F2F; }
+.dark .bg-\[\#F8FCFD\] { background-color: #0E1A28; }
+.dark .hover\:bg-\[\#F8FCFD\]:hover { background-color: #0E1A28; }
+.dark .bg-\[\#F4F9FB\] { background-color: #15283B; }
+.dark .hover\:bg-\[\#F4F9FB\]:hover { background-color: #15283B; }
+.dark .bg-\[\#F4FAFC\] { background-color: #15283B; }
+.dark .hover\:bg-\[\#F4FAFC\]:hover { background-color: #15283B; }
+.dark .bg-\[\#DFF3FA\] { background-color: #123A4C; }
+.dark .hover\:bg-\[\#DFF3FA\]:hover { background-color: #123A4C; }
+.dark .bg-\[\#D4EEF7\] { background-color: #164658; }
+.dark .hover\:bg-\[\#D4EEF7\]:hover { background-color: #164658; }
+.dark .bg-\[\#E8F7F0\] { background-color: #0F3A2D; }
+.dark .hover\:bg-\[\#E8F7F0\]:hover { background-color: #0F3A2D; }
+.dark .bg-\[\#D9F3E6\] { background-color: #0F3A2D; }
+.dark .hover\:bg-\[\#D9F3E6\]:hover { background-color: #0F3A2D; }
+.dark .bg-\[\#FDF0EE\] { background-color: #3B1D1F; }
+.dark .hover\:bg-\[\#FDF0EE\]:hover { background-color: #3B1D1F; }
+.dark .bg-\[\#FDEDEC\] { background-color: #3B1D1F; }
+.dark .hover\:bg-\[\#FDEDEC\]:hover { background-color: #3B1D1F; }
+.dark .bg-\[\#FCE8E5\] { background-color: #4A2325; }
+.dark .hover\:bg-\[\#FCE8E5\]:hover { background-color: #4A2325; }
+.dark .bg-\[\#FEF6E8\] { background-color: #332B18; }
+.dark .hover\:bg-\[\#FEF6E8\]:hover { background-color: #332B18; }
+.dark .bg-\[\#fff8e7\] { background-color: #1B2B38; }
+.dark .hover\:bg-\[\#fff8e7\]:hover { background-color: #1B2B38; }
+.dark .bg-\[\#FFF7E6\] { background-color: #2E2A1A; }
+.dark .hover\:bg-\[\#FFF7E6\]:hover { background-color: #2E2A1A; }
+.dark .bg-\[\#FFF6DD\] { background-color: #332B18; }
+.dark .hover\:bg-\[\#FFF6DD\]:hover { background-color: #332B18; }
+.dark .hover\:bg-\[\#0B3954\]:hover { background-color: #1E88AA; }
+.dark .text-\[\#0B3954\] { color: #E4F0F6; }
+.dark .hover\:text-\[\#0B3954\]:hover { color: #E4F0F6; }
+.dark .text-\[\#12284b\] { color: #E4F0F6; }
+.dark .hover\:text-\[\#12284b\]:hover { color: #E4F0F6; }
+.dark .text-\[\#173042\] { color: #D3E2EA; }
+.dark .hover\:text-\[\#173042\]:hover { color: #D3E2EA; }
+.dark .text-\[\#5B7282\] { color: #9DB4C1; }
+.dark .hover\:text-\[\#5B7282\]:hover { color: #9DB4C1; }
+.dark .text-\[\#52798F\] { color: #9DB4C1; }
+.dark .hover\:text-\[\#52798F\]:hover { color: #9DB4C1; }
+.dark .text-\[\#176B87\] { color: #5CBFE0; }
+.dark .hover\:text-\[\#176B87\]:hover { color: #5CBFE0; }
+.dark .text-\[\#16865B\] { color: #4FD3A3; }
+.dark .hover\:text-\[\#16865B\]:hover { color: #4FD3A3; }
+.dark .text-\[\#C0392B\] { color: #FF8F80; }
+.dark .hover\:text-\[\#C0392B\]:hover { color: #FF8F80; }
+.dark .text-\[\#D99116\] { color: #F4BC55; }
+.dark .hover\:text-\[\#D99116\]:hover { color: #F4BC55; }
+.dark .text-\[\#9A6A00\] { color: #F4BC55; }
+.dark .hover\:text-\[\#9A6A00\]:hover { color: #F4BC55; }
+.dark .border-\[\#D8E5EB\] { border-color: #24394D; }
+.dark .hover\:border-\[\#D8E5EB\]:hover { border-color: #24394D; }
+.dark .border-\[\#E2EDF2\] { border-color: #24394D; }
+.dark .hover\:border-\[\#E2EDF2\]:hover { border-color: #24394D; }
+.dark .border-\[\#D2E6ED\] { border-color: #24394D; }
+.dark .hover\:border-\[\#D2E6ED\]:hover { border-color: #24394D; }
+.dark .border-\[\#C4D9E2\] { border-color: #24394D; }
+.dark .hover\:border-\[\#C4D9E2\]:hover { border-color: #24394D; }
+.dark .border-\[\#CDE3ED\] { border-color: #24394D; }
+.dark .hover\:border-\[\#CDE3ED\]:hover { border-color: #24394D; }
+.dark .border-\[\#BDE0EE\] { border-color: #24394D; }
+.dark .hover\:border-\[\#BDE0EE\]:hover { border-color: #24394D; }
+.dark .border-\[\#A6E2C6\] { border-color: #1F6650; }
+.dark .hover\:border-\[\#A6E2C6\]:hover { border-color: #1F6650; }
+.dark .border-\[\#B3E5CD\] { border-color: #1F6650; }
+.dark .hover\:border-\[\#B3E5CD\]:hover { border-color: #1F6650; }
+.dark .border-\[\#F5B8B1\] { border-color: #74302F; }
+.dark .hover\:border-\[\#F5B8B1\]:hover { border-color: #74302F; }
+.dark .border-\[\#F5C6CB\] { border-color: #74302F; }
+.dark .hover\:border-\[\#F5C6CB\]:hover { border-color: #74302F; }
+.dark .border-\[\#EAA29A\] { border-color: #74302F; }
+.dark .hover\:border-\[\#EAA29A\]:hover { border-color: #74302F; }
+.dark .border-\[\#F8DAA5\] { border-color: #6E5522; }
+.dark .hover\:border-\[\#F8DAA5\]:hover { border-color: #6E5522; }
+.dark .border-\[\#F2D184\] { border-color: #6E5522; }
+.dark .hover\:border-\[\#F2D184\]:hover { border-color: #6E5522; }
+.dark .border-\[\#F0D58A\] { border-color: #6E5522; }
+.dark .hover\:border-\[\#F0D58A\]:hover { border-color: #6E5522; }
+.dark .text-\[\#12284b\]\/70 { color: rgba(228, 240, 246, 0.72); }
+.dark .text-\[\#12284b\]\/60 { color: rgba(228, 240, 246, 0.62); }
+.dark .bg-\[\#DFF3FA\]\/70 { background-color: rgba(18, 58, 76, 0.7); }
+.dark .border-\[\#8cc1e9\]\/40 { border-color: rgba(92, 191, 224, 0.3); }
+.dark .focus\:bg-\[\#fff8e7\]:focus { background-color: #1B2B38; }
+.dark .focus\:ring-\[\#12284b\]:focus { --tw-ring-color: #5CBFE0; }
+.dark .bg-white\/95 { background-color: rgba(17, 31, 47, 0.95); }
+.dark .bg-white\/90 { background-color: rgba(17, 31, 47, 0.90); }
+
+/* ---- Component classes ---- */
+.dark .marine-card {
+  background-color: #111F2F;
+  border-color: #24394D;
+  box-shadow: 0 2px 10px -2px rgba(0, 0, 0, 0.45);
+}
+.dark .marine-card-elevated {
+  background-color: #111F2F;
+  border-color: #24394D;
+  box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.5);
+}
+@media (hover: hover) {
+  .dark .marine-card:hover { box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.6); }
+}
+.dark .status-badge-safe { background-color: #0F3A2D; color: #4FD3A3; border-color: #1F6650; }
+.dark .status-badge-warning { background-color: #3A2E14; color: #F4BC55; border-color: #6E5522; }
+.dark .status-badge-danger { background-color: #3B1D1F; color: #FF8F80; border-color: #74302F; }
+.dark .bg-marine-soft { background-color: #15283B; }
+
+/* ---- Sea backdrop (deep water and dark shoreline) ---- */
+.dark .sea-backdrop {
+  background-color: #0A1826;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'%3E%3Cpath d='M0 70 C150 30 300 110 450 70 S750 30 900 70 S1050 110 1200 70 V160 H0Z' fill='%235CBFE0' fill-opacity='0.07'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'%3E%3Cpath d='M0 90 C200 50 350 130 600 90 S1000 50 1200 90 V160 H0Z' fill='%23176B87' fill-opacity='0.18'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 160' preserveAspectRatio='none'%3E%3Cpath d='M0 110 C250 80 400 140 650 110 S1000 80 1200 110 V160 H0Z' fill='%23C9B27A' fill-opacity='0.10'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, #0B1B2B 0%, #0A2233 45%, #0A2A3A 72%, #1A2A2B 100%);
+}
+
+/* ---- Scrollbars ---- */
+.dark ::-webkit-scrollbar-track { background: #0E1A28; }
+.dark ::-webkit-scrollbar-thumb { background: #2C4459; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #5CBFE0; }
+
+/* ---- Leaflet ---- */
+.dark .leaflet-container { background: #0B1E2C !important; }
+/* Basemap tiles are CARTO dark_all in both themes, so no tile filter is needed. */
+.dark .marine-popup .leaflet-popup-content-wrapper {
+  background: #111F2F !important;
+  color: #D3E2EA !important;
+}
+.dark .marine-popup .leaflet-popup-tip { background: #111F2F !important; }
+.dark .marine-popup a.leaflet-popup-close-button { color: #9DB4C1 !important; }
+.dark .leaflet-control-zoom a,
+.dark .leaflet-bar a {
+  background-color: #111F2F;
+  color: #D3E2EA;
+  border-color: #24394D;
+}
+.dark .leaflet-bar a:hover { background-color: #15283B; }
+.dark .leaflet-control-attribution {
+  background: rgba(14, 26, 40, 0.8) !important;
+  color: #9DB4C1 !important;
+}
+.dark .leaflet-control-attribution a { color: #5CBFE0 !important; }
