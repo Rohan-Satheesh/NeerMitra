@@ -541,7 +541,7 @@ export function AdvisoryChat({ onActivityChange }: AdvisoryChatProps = {}) {
             onClick={isRecording ? stopRecording : startRecording}
             disabled={isProcessing}
             className={cn(
-              "h-12 w-12 rounded-xl flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs",
+              "h-11 w-11 md:h-12 md:w-12 rounded-xl flex items-center justify-center shrink-0 transition-all cursor-pointer shadow-xs",
               isRecording
                 ? "bg-[#C0392B] hover:bg-[#A93226] text-white animate-pulse"
                 : "bg-[rgba(140,193,233,0.12)] hover:bg-[rgba(140,193,233,0.19)] text-[#12284b] border border-[#8cc1e9] dark:text-[#e8f2fb] dark:border-[#2f4a6e]"
@@ -567,14 +567,14 @@ export function AdvisoryChat({ onActivityChange }: AdvisoryChatProps = {}) {
               language === 'ML' ? 'ചോദ്യം ഇവിടെ ടൈപ്പ് ചെയ്യുക...' : 'Type your question here...'
             }
             disabled={isRecording}
-            className="flex-1 h-12 px-5 bg-[rgba(140,193,233,0.19)] border-2 border-[#8cc1e9] rounded-full text-[#12284b] placeholder-[#8cc1e9] placeholder:font-semibold text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#12284b] focus:bg-[#fff8e7] transition-all disabled:opacity-50 dark:text-[#e8f2fb] dark:border-[#3d6690] dark:focus:ring-[#8cc1e9] dark:focus:bg-[#0d1420]"
+            className="flex-1 min-w-0 h-11 md:h-12 px-3.5 md:px-5 bg-[rgba(140,193,233,0.19)] border-2 border-[#8cc1e9] rounded-full text-[#12284b] placeholder-[#8cc1e9] placeholder:font-semibold text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-[#12284b] focus:bg-[#fff8e7] transition-all disabled:opacity-50 dark:text-[#e8f2fb] dark:border-[#3d6690] dark:focus:ring-[#8cc1e9] dark:focus:bg-[#0d1420]"
           />
 
           {/* Send Button */}
           <button
             type="submit"
             disabled={!inputText.trim() || isProcessing || isRecording}
-            className="h-12 px-5 rounded-full bg-[#12284b] hover:bg-[#0d1f3a] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-xs transition-colors cursor-pointer dark:bg-[#3d6690] dark:hover:bg-[#4a7ba8]"
+            className="h-11 md:h-12 px-3.5 md:px-5 rounded-full bg-[#12284b] hover:bg-[#0d1f3a] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs md:text-sm flex items-center justify-center gap-1.5 shrink-0 shadow-xs transition-colors cursor-pointer dark:bg-[#3d6690] dark:hover:bg-[#4a7ba8]"
           >
             <span>{language === 'ML' ? 'അയക്കുക' : 'Send'}</span>
             <Send className="w-4 h-4" />

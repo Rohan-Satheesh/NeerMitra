@@ -85,8 +85,8 @@ export default function HomeDashboard() {
             >
               <Clock className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{formattedDate}</span>
-              <span>•</span>
-              <span className="flex items-center gap-1 truncate">
+              <span className="hidden sm:inline">•</span>
+              <span className="hidden sm:flex items-center gap-1 truncate">
                 <MapPin className="w-3 h-3 text-[#176B87] dark:text-[#8cc1e9] shrink-0" />
                 {data.locationName}
               </span>

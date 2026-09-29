@@ -141,10 +141,10 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
   };
 
   return (
-    <header className="h-14 md:h-16 border-b border-[#D8E5EB] bg-white sticky top-0 z-40 flex items-center justify-between px-3.5 md:px-6 shadow-sm select-none">
+    <header className="h-14 md:h-16 border-b border-[#D8E5EB] bg-white sticky top-0 z-40 flex items-center justify-between px-2.5 md:px-6 gap-1.5 md:gap-0 shadow-sm select-none">
       
       {/* Left: Brand Identity */}
-      <div className="flex items-center space-x-2.5">
+      <div className="flex items-center space-x-2.5 shrink-0">
         <Link to="/" className="flex items-center space-x-2 group">
           <div className="w-9 h-9 rounded-xl bg-[#0B3954] flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105">
             <Anchor className="w-5 h-5 text-[#DFF3FA]" />
@@ -153,7 +153,7 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
             <span className="text-base font-extrabold tracking-tight text-[#0B3954] leading-tight">
               {t('appName')}
             </span>
-            <span className="text-[10px] font-semibold text-[#176B87] truncate leading-tight">
+            <span className="hidden md:block text-[10px] font-semibold text-[#176B87] truncate leading-tight">
               {t('appTagline')}
             </span>
           </div>
@@ -161,12 +161,12 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
       </div>
 
       {/* Center / Location Selector Pill */}
-      <div className="relative" ref={locationRef}>
+      <div className="relative min-w-0" ref={locationRef}>
         <button
           type="button"
           onClick={() => setLocationMenuOpen(prev => !prev)}
           className={cn(
-            "flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer",
+            "flex items-center space-x-1 md:space-x-1.5 px-2 md:px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-all cursor-pointer max-w-full",
             locationMenuOpen 
               ? "bg-[#DFF3FA] border-[#176B87] text-[#0B3954]"
               : "bg-[#F4F9FB] border-[#D8E5EB] hover:border-[#176B87] text-[#173042]"
@@ -174,7 +174,7 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
           title={t('selectLocation')}
         >
           <MapPin className={cn("w-3.5 h-3.5 flex-shrink-0 text-[#176B87]", isRefreshing && "animate-bounce")} />
-          <span className="truncate max-w-[120px] sm:max-w-[180px]">
+          <span className="truncate max-w-[72px] sm:max-w-[180px]">
             {activeLocationLabel}
           </span>
           <ChevronDown className={cn("w-3.5 h-3.5 text-[#5B7282] transition-transform", locationMenuOpen && "rotate-180 text-[#0B3954]")} />
@@ -237,18 +237,18 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
       </div>
 
       {/* Right: Language Selector & Emergency SOS */}
-      <div className="flex items-center space-x-2">
+      <div className="flex items-center space-x-1.5 md:space-x-2 shrink-0">
         
         {/* Language Selector */}
         <div className="relative" ref={langRef}>
           <button
             type="button"
             onClick={() => setLangMenuOpen(prev => !prev)}
-            className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border border-[#D8E5EB] bg-white hover:bg-[#F4F9FB] text-xs font-bold text-[#0B3954] transition-colors cursor-pointer shadow-xs"
+            className="flex items-center space-x-1 md:space-x-1.5 px-2 md:px-2.5 py-1.5 rounded-xl border border-[#D8E5EB] bg-white hover:bg-[#F4F9FB] text-xs font-bold text-[#0B3954] transition-colors cursor-pointer shadow-xs"
             title="Change Language"
           >
             <Languages className="w-3.5 h-3.5 text-[#176B87]" />
-            <span>{LANGUAGES.find(l => l.code === language)?.nativeName || 'Language'}</span>
+            <span className="hidden sm:inline">{LANGUAGES.find(l => l.code === language)?.nativeName || 'Language'}</span>
             <ChevronDown className="w-3 h-3 text-[#5B7282]" />
           </button>
 
@@ -284,7 +284,7 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
         <button
           type="button"
           onClick={toggleTheme}
-          className="flex items-center px-2.5 py-1.5 bg-[#F4F9FB] hover:bg-[#DFF3FA] border border-[#D8E5EB] rounded-xl text-[#176B87] transition-all shadow-xs cursor-pointer"
+          className="flex items-center px-2 md:px-2.5 py-1.5 bg-[#F4F9FB] hover:bg-[#DFF3FA] border border-[#D8E5EB] rounded-xl text-[#176B87] transition-all shadow-xs cursor-pointer"
           title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
           aria-pressed={isDark}
@@ -295,7 +295,7 @@ export default function TopBar({ onOpenCommandPalette }: TopBarProps) {
         {/* Emergency SOS Call (High-Visibility Red Badge) */}
         <a
           href="tel:112"
-          className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-[#FDF0EE] hover:bg-[#FCE8E5] border border-[#F5B8B1] rounded-xl text-[#C0392B] text-xs font-bold transition-all shadow-xs"
+          className="flex items-center space-x-1.5 px-2 md:px-2.5 py-1.5 bg-[#FDF0EE] hover:bg-[#FCE8E5] border border-[#F5B8B1] rounded-xl text-[#C0392B] text-xs font-bold transition-all shadow-xs"
           title="Emergency Help 112"
         >
           <PhoneCall className="w-3.5 h-3.5 text-[#C0392B] animate-pulse" />

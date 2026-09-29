@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, CloudSun, Waves, Fish, ShieldAlert } from 'lucide-react';
+import { Home, CloudSun, Waves, Fish, Ship, ShieldAlert } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -11,6 +11,7 @@ export default function MobileNavBar() {
     { label: t('navHome') || 'Home', path: '/', icon: Home },
     { label: `${t('navWeather')} & ${t('navSea')}`, path: '/weather', icon: CloudSun },
     { label: t('navZones'), path: '/zones', icon: Fish },
+    { label: 'Fleet Optimizer', path: '/fleet', icon: Ship },
     { label: t('navSafety'), path: '/safety', icon: ShieldAlert, alert: true },
   ];
 
@@ -26,7 +27,7 @@ export default function MobileNavBar() {
             key={item.path}
             to={item.path}
             className={({ isActive }) => cn(
-              "flex flex-col items-center justify-center flex-1 py-1 px-1 rounded-xl transition-all min-h-[50px] touch-manipulation",
+              "flex flex-col items-center justify-center flex-1 min-w-0 py-1 px-0.5 rounded-xl transition-all min-h-[50px] touch-manipulation",
               isActive 
                 ? "text-[#0B3954] font-bold bg-[#DFF3FA]/70" 
                 : "text-[#5B7282] hover:text-[#0B3954] font-medium"
@@ -43,7 +44,7 @@ export default function MobileNavBar() {
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#C0392B] rounded-full animate-pulse" />
                   )}
                 </div>
-                <span className={cn("text-[10px] leading-tight truncate mt-0.5 tracking-tight", item.alert && !isActive && "text-[#C0392B]")}>
+                <span className={cn("text-[10px] leading-tight text-center break-words mt-0.5 tracking-tight", item.alert && !isActive && "text-[#C0392B]")}>
                   {item.label}
                 </span>
               </>
